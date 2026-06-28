@@ -760,7 +760,7 @@ col_input, col_btn = st.columns([4, 1])
 with col_input:
     st.markdown('<div class="ticker-label">Search Indian Company Name or Ticker</div>', unsafe_allow_html=True)
     
-    # 1. User types part of the company name (e.g., "Reliance" or "Tata")
+    # 1. User types part of the company name (e.g., "ask") and hits Enter
     search_query = st.text_input(
         label="search",
         placeholder="e.g. Reliance, Tata Motors, Wipro...",
@@ -770,12 +770,10 @@ with col_input:
     # 2. Fetch live autocomplete suggestions dynamically
     suggestions = []
     if search_query.strip():
-        # Securely hit Yahoo's internal search API
         url = f"https://query2.finance.yahoo.com/v1/finance/search?q={search_query.strip()}"
         headers = {'User-Agent': 'Mozilla/5.0'} 
         try:
             res = requests.get(url, headers=headers).json()
-            # Filter specifically for Indian markets (.NS for NSE, .BO for BSE)
             for q in res.get('quotes', []):
                 sym = q.get('symbol', '')
                 if sym.endswith('.NS') or sym.endswith('.BO'):
@@ -784,14 +782,12 @@ with col_input:
         except Exception:
             pass
 
-    # 3. Create a dropdown if we found matches, or auto-append .NS if not
+    # 3. Create a dropdown, automatically selecting the top match
     ticker_raw = ""
     if suggestions:
-        selected_option = st.selectbox("Select the exact company:", suggestions)
-        # Extract just the ticker (e.g. "RELIANCE.NS" from "RELIANCE.NS | Reliance Industries")
+        selected_option = st.selectbox("Matches found (First match auto-selected):", suggestions)
         ticker_raw = selected_option.split("  |  ")[0]
     elif search_query.strip():
-        # Fallback: If they type a raw ticker like "TCS" and hit enter, auto-add .NS
         ticker_raw = search_query.strip().upper()
         if not ticker_raw.endswith(".NS") and not ticker_raw.endswith(".BO"):
             ticker_raw += ".NS"
@@ -800,8 +796,14 @@ with col_btn:
     st.markdown("<br>", unsafe_allow_html=True)
     analyze_clicked = st.button("Analyze →", use_container_width=True)
 
-# ── Fetch data on button click ─────────────────────────────────────────────────
-if analyze_clicked and ticker_raw:
+# ── Fetch data (AUTOMATICALLY on Enter) ────────────────────────────────────────
+# Check what stock is currently loaded on the screen
+current_loaded_ticker = None
+if st.session_state.stock_data is not None:
+    current_loaded_ticker = st.session_state.stock_data.get("ticker")
+
+# Auto-Trigger: Fetch if they clicked the button OR if the selected ticker is new!
+if ticker_raw and (analyze_clicked or ticker_raw != current_loaded_ticker):
     with st.spinner(f"Fetching data for **{ticker_raw}** …"):
         try:
             st.session_state.stock_data = fetch_stock_data(ticker_raw)
@@ -816,7 +818,7 @@ if st.session_state.stock_data is None:
     <div style="margin-top:3rem;text-align:center;color:#2e3a54;">
         <div style="font-size:2.5rem;margin-bottom:0.6rem;">📊</div>
         <div style="font-size:1rem;color:#3a4a6a;font-weight:500">
-            Search for an Indian company above and press <b style="color:#4a9eff">Analyze →</b>
+            Search for an Indian company above and press <b style="color:#4a9eff">Enter ↵</b>
         </div>
     </div>
     """, unsafe_allow_html=True)
