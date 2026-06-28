@@ -543,26 +543,33 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-section">Model Settings</div>', unsafe_allow_html=True)
 
-    growth_rate = st.slider(
-        "Expected Sales Growth Rate",
-        min_value=0.01, max_value=0.50, value=0.20, step=0.01,
-        format="%.0f%%",
-        help="How fast you expect the company's revenue to grow per year. Default: 20%"
-    )
+# 1. Use whole numbers for the slider UI so it displays perfectly (e.g., 20%)
+growth_rate_pct = st.slider(
+    "Expected Sales Growth Rate",
+    min_value=1, max_value=50, value=20, step=1,
+    format="%d%%",
+    help="How fast you expect the company's revenue to grow per year. Default: 20%"
+)
+# Convert it back to a decimal (0.20) so your Excel-style math formulas don't break
+growth_rate = growth_rate_pct / 100.0
 
-    terminal_multiple = st.slider(
-        "Terminal Sales Multiple (P/S)",
-        min_value=1.0, max_value=20.0, value=5.0, step=0.5,
-        format="%.1fx",
-        help="How many times its annual sales the company will be worth at exit. Default: 5×"
-    )
+# Leave the multiple as a float since it uses decimals (e.g., 5.5x)
+terminal_multiple = st.slider(
+    "Terminal Sales Multiple (P/S)",
+    min_value=1.0, max_value=20.0, value=5.0, step=0.5,
+    format="%.1fx",
+    help="How many times its annual sales the company will be worth at exit. Default: 5×"
+)
 
-    desired_return = st.slider(
-        "Desired Yearly Return",
-        min_value=0.05, max_value=0.40, value=0.15, step=0.01,
-        format="%.0f%%",
-        help="The minimum annual return you want to earn. Default: 15%"
-    )
+# 2. Use whole numbers for the desired return slider UI (e.g., 15%)
+desired_return_pct = st.slider(
+    "Desired Yearly Return",
+    min_value=5, max_value=40, value=15, step=1,
+    format="%d%%",
+    help="The minimum annual return you want to earn. Default: 15%"
+)
+# Convert it back to a decimal (0.15) for the mathematical model
+desired_return = desired_return_pct / 100.0
 
     hold_years = st.slider(
         "Years to Hold",
