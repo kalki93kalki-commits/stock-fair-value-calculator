@@ -413,19 +413,35 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
             "_diff":                  v["pct_diff"],
         })
 
-    df = pd.DataFrame(rows)
+   df = pd.DataFrame(rows)
 
-    # Format number columns with commas
+    # 1. NEW: Calculate Fair Share Price mathematically before adding commas
+    df["Fair Share Price (₹)"] = data["price"] * (df["Fair Value Today (₹ Cr)"] / data["market_cap"])
+
+    # 2. Format large number columns with commas (no decimals)
     for col in ["Projected Sales (₹ Cr)", "Future Worth (₹ Cr)", "Fair Value Today (₹ Cr)"]:
         df[col] = df[col].apply(lambda x: f"₹{x:,.0f}")
+
+    # 3. NEW: Format the Fair Share Price with commas and 2 decimals
+    df["Fair Share Price (₹)"] = df["Fair Share Price (₹)"].apply(lambda x: f"₹{x:,.2f}")
 
     # Add % diff column
     df["Over/Under"] = df["_diff"].apply(lambda x: f"+{x*100:.1f}%" if x > 0 else f"{x*100:.1f}%")
 
+    # 4. UPDATED: Insert "Fair Share Price (₹)" into the final display layout
     display_df = df[["Growth Rate", "Projected Sales (₹ Cr)", "Future Worth (₹ Cr)",
-                     "Fair Value Today (₹ Cr)", "vs. Market Cap", "Over/Under"]].copy()
+                     "Fair Value Today (₹ Cr)", "Fair Share Price (₹)", "vs. Market Cap", "Over/Under"]].copy()
 
+    # 5. COMPLETED: The color_row function for the table background colors
     def color_row(row):
+        # Colors the row green if undervalued (+), red if overvalued (-)
+        if "+" in str(row["Over/Under"]):
+            return ['background-color: rgba(39, 174, 96, 0.15)'] * len(row)
+        else:
+            return ['background-color: rgba(231, 76, 60, 0.15)'] * len(row)
+            
+    # Apply the colors and display the table
+    st.dataframe(display_df.style.apply(color_row, axis=1), use_container_width=True)
         # "_overpaying" is in df but not display_df; align by index
         overpaying = df.loc[row.name, "_overpaying"]
         if overpaying:
@@ -571,7 +587,7 @@ with st.sidebar:
 
     hold_years = st.slider(
         "Years to Hold",
-        min_value=3, max_value=20, value=10, step=1,
+        min_value=1, max_value=30, value=10, step=1,
         format="%d yrs",
         help="How many years you plan to hold the stock. Default: 10"
     )
