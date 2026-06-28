@@ -415,42 +415,34 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
 
    df = pd.DataFrame(rows)
 
-    # 1. NEW: Calculate Fair Share Price mathematically before adding commas
+    # 1. Calculate Fair Share Price mathematically before adding commas
     df["Fair Share Price (₹)"] = data["price"] * (df["Fair Value Today (₹ Cr)"] / data["market_cap"])
 
     # 2. Format large number columns with commas (no decimals)
     for col in ["Projected Sales (₹ Cr)", "Future Worth (₹ Cr)", "Fair Value Today (₹ Cr)"]:
         df[col] = df[col].apply(lambda x: f"₹{x:,.0f}")
 
-    # 3. NEW: Format the Fair Share Price with commas and 2 decimals
+    # 3. Format the Fair Share Price with commas and 2 decimals
     df["Fair Share Price (₹)"] = df["Fair Share Price (₹)"].apply(lambda x: f"₹{x:,.2f}")
 
-    # Add % diff column
+    # 4. Add % diff column
     df["Over/Under"] = df["_diff"].apply(lambda x: f"+{x*100:.1f}%" if x > 0 else f"{x*100:.1f}%")
 
-    # 4. UPDATED: Insert "Fair Share Price (₹)" into the final display layout
+    # 5. Insert "Fair Share Price (₹)" into the final display layout
     display_df = df[["Growth Rate", "Projected Sales (₹ Cr)", "Future Worth (₹ Cr)",
                      "Fair Value Today (₹ Cr)", "Fair Share Price (₹)", "vs. Market Cap", "Over/Under"]].copy()
 
-    # 5. COMPLETED: The color_row function for the table background colors
+    # 6. Cleaned up color_row function mapping to your dark-mode colors
     def color_row(row):
-        # Colors the row green if undervalued (+), red if overvalued (-)
-        if "+" in str(row["Over/Under"]):
-            return ['background-color: rgba(39, 174, 96, 0.15)'] * len(row)
-        else:
-            return ['background-color: rgba(231, 76, 60, 0.15)'] * len(row)
-            
-    # Apply the colors and display the table
-    st.dataframe(display_df.style.apply(color_row, axis=1), use_container_width=True)
-        # "_overpaying" is in df but not display_df; align by index
         overpaying = df.loc[row.name, "_overpaying"]
         if overpaying:
-            return ["", "", "", "background-color:#2e0d0d;color:#ef4444",
-                    "background-color:#2e0d0d;color:#ef4444", "background-color:#2e0d0d;color:#ef4444"]
+            # Leaves first 3 columns blank, highlights the last 4 columns in red
+            return ["", "", ""] + ["background-color:#2e0d0d;color:#ef4444"] * 4
         else:
-            return ["", "", "", "background-color:#0d2e1f;color:#22c55e",
-                    "background-color:#0d2e1f;color:#22c55e", "background-color:#0d2e1f;color:#22c55e"]
+            # Leaves first 3 columns blank, highlights the last 4 columns in green
+            return ["", "", ""] + ["background-color:#0d2e1f;color:#22c55e"] * 4
 
+    # 7. Apply your custom dark-mode table styling
     styled = display_df.style.apply(color_row, axis=1).set_properties(**{
         "background-color": "#161b27",
         "color": "#c9cfe0",
@@ -472,7 +464,6 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
     ])
 
     return styled
-
 
 def build_price_chart(history: pd.DataFrame, ticker: str):
     """
