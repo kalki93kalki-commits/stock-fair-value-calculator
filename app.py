@@ -327,8 +327,8 @@ def fetch_stock_data(ticker: str):
     revenue_raw = info.get("totalRevenue", 0)
     revenue_cr  = crores(revenue_raw) if revenue_raw else None
 
-    # 2-year historical OHLCV
-    hist = t.history(period="2y", interval="1d", auto_adjust=True)
+    # all-year historical OHLCV
+    hist = t.history(period="max", interval="1d", auto_adjust=True)
 
     return {
         "ticker":       ticker.upper(),
