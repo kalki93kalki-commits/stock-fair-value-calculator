@@ -690,7 +690,7 @@ with st.sidebar:
     # 1. Expected Sales Growth Rate Slider
     growth_rate_pct = st.slider(
         "Expected Sales Growth Rate",
-        min_value=1, max_value=50, value=20, step=1,
+        min_value=1, max_value=50, value=10, step=1,
         format="%d%%",
         help="How fast you expect the company's revenue to grow per year. Default: 20%"
     )
