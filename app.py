@@ -739,8 +739,14 @@ roe = info.get("returnOnEquity")
 roe_str = f"{roe * 100:.1f}%" if roe is not None else "N/A"
 
 div_yield = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
-div_str = f"{div_yield * 100:.2f}%" if div_yield is not None else "0.00%"
-
+if div_yield is not None:
+    # If Yahoo Finance already returns it as a percentage (e.g., > 1), don't multiply by 100
+    if div_yield > 1:
+        div_str = f"{div_yield:.2f}%"
+    else:
+        div_str = f"{div_yield * 100:.2f}%"
+else:
+    div_str = "0.00%"
 # Create a row of 4 clean metric boxes
 h1, h2, h3, h4 = st.columns(4)
 
