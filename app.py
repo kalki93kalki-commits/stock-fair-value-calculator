@@ -551,6 +551,123 @@ def build_price_chart(history: pd.DataFrame, ticker: str):
 
     return fig
 
+def build_pe_chart(history: pd.DataFrame, financials: pd.DataFrame):
+    """
+    Calculates historical P/E by merging daily prices with annual EPS.
+    """
+    try:
+        if financials is None or financials.empty:
+            return None, None, None
+            
+        # 1. Find the Earnings Per Share (EPS) row
+        eps_row = None
+        for row in ['Diluted EPS', 'Basic EPS']:
+            if row in financials.index:
+                eps_row = financials.loc[row]
+                break
+                
+        if eps_row is None or eps_row.isna().all():
+            return None, None, None
+            
+        # 2. Format EPS data dates
+        eps_df = eps_row.dropna().reset_index()
+        eps_df.columns = ['Date', 'EPS']
+        eps_df['Date'] = pd.to_datetime(eps_df['Date']).dt.tz_localize(None)
+        eps_df = eps_df.sort_values('Date')
+        
+        # 3. Format Price data dates
+        price_df = history[['Close']].copy().reset_index()
+        price_df['Date'] = pd.to_datetime(price_df['Date']).dt.tz_localize(None)
+        price_df = price_df.sort_values('Date')
+        
+        # 4. Merge daily prices with the most recent EPS available on that day
+        merged = pd.merge_asof(price_df, eps_df, on='Date', direction='backward')
+        merged = merged.dropna()
+        
+        if merged.empty:
+            return None, None, None
+            
+        # 5. Calculate P/E
+        merged['PE'] = merged['Close'] / merged['EPS']
+        
+        # Filter out negative earnings and extreme outliers to keep chart readable
+        merged = merged[(merged['PE'] > 0) & (merged['PE'] < 250)]
+        
+        if merged.empty:
+            return None, None, None
+            
+        median_pe = merged['PE'].median()
+        current_pe = merged['PE'].iloc[-1]
+        
+        # 6. Build Plotly Chart
+        fig = go.Figure()
+        
+        # The P/E Line
+        fig.add_trace(go.Scatter(
+            x=merged['Date'], y=merged['PE'],
+            name="Trailing P/E",
+            line=dict(color="#10b981", width=1.5), 
+            fill="tozeroy",
+            fillcolor="rgba(16, 185, 129, 0.08)",
+            hovertemplate="<b>%{x|%d %b %Y}</b><br>P/E: %{y:.1f}x<extra></extra>",
+        ))
+        
+        # The Median Target Line
+        fig.add_hline(
+            y=median_pe, 
+            line_dash="dash", 
+            line_color="#f59e0b", 
+            annotation_text=f"Historical Median: {median_pe:.1f}x",
+            annotation_position="top left",
+            annotation_font_color="#f59e0b"
+        )
+
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, sans-serif", color="#8a9ab5"),
+            margin=dict(l=0, r=0, t=75, b=0),
+            height=320,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", y=1.02,
+                xanchor="left",   x=0,
+                bgcolor="rgba(0,0,0,0)",
+                font=dict(size=11, color="#8a9ab5"),
+            ),
+            xaxis=dict(
+                gridcolor="#1e2535",
+                showline=False,
+                tickfont=dict(size=11),
+                type="date",
+                rangeselector=dict(
+                    x=0, y=1.16,
+                    xanchor="left", yanchor="bottom",
+                    bgcolor="#161b27", 
+                    activecolor="#232a3b", 
+                    font=dict(size=10, color="#8a9ab5"),
+                    buttons=list([
+                        dict(count=1, label="1Y", step="year", stepmode="backward"),
+                        dict(count=2, label="2Y", step="year", stepmode="backward"),
+                        dict(count=3, label="3Y", step="year", stepmode="backward"),
+                        dict(count=5, label="5Y", step="year", stepmode="backward"),
+                        dict(step="all", label="ALL")
+                    ])
+                )
+            ),
+            yaxis=dict(
+                gridcolor="#1e2535",
+                showline=False,
+                tickfont=dict(size=11),
+                ticksuffix="x",
+            ),
+            hovermode="x unified",
+        )
+        
+        return fig, current_pe, median_pe
+    except Exception:
+        return None, None, None
+
 # ─────────────────────────────────────────────
 # SESSION STATE INITIALISATION
 # ─────────────────────────────────────────────
@@ -978,7 +1095,7 @@ st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 # ─────────────────────────────────────────────
 # SECTION 4 — TECHNICAL ANALYSIS CHART
 # ─────────────────────────────────────────────
-st.markdown('<div class="section-title">📉 Price History & Moving Averages (2 Years)</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">📉 Price History & Moving Averages </div>', unsafe_allow_html=True)
 st.markdown(
     "<small style='color:#4a5570'>"
     "50-day SMA (amber) tracks medium-term momentum. "
