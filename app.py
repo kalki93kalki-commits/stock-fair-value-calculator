@@ -537,11 +537,11 @@ if "ticker_input" not in st.session_state:
 # SIDEBAR — Settings & Controls
 # ─────────────────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="sidebar-section">GrowGuru</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section">ValuePulse</div>', unsafe_allow_html=True)
     st.markdown("**Fundamental Valuation Analyzer**")
     st.markdown("<small style='color:#4a5570'>All values in ₹ Crore · Indian equities focus</small>", unsafe_allow_html=True)
 
-   st.markdown('<div class="sidebar-section">Model Settings</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section">Model Settings</div>', unsafe_allow_html=True)
 
     # 1. Expected Sales Growth Rate Slider
     growth_rate_pct = st.slider(
@@ -577,9 +577,9 @@ with st.sidebar:
     )
 
     st.markdown('<div class="sidebar-section">Sensitivity Range</div>', unsafe_allow_html=True)
-    sens_min = st.number_input("Min Growth %", value=10, min_value=1,  max_value=49, step=5)
-    sens_max = st.number_input("Max Growth %", value=30, min_value=2,  max_value=50, step=5)
-    sens_step= st.number_input("Step %",       value=5,  min_value=1,  max_value=10, step=1)
+    sens_min = st.number_input("Min Growth %", value=10, min_value=1, max_value=49, step=5)
+    sens_max = st.number_input("Max Growth %", value=30, min_value=2, max_value=50, step=5)
+    sens_step= st.number_input("Step %", value=5, min_value=1, max_value=10, step=1)
 
     sensitivity_range = [
         round(x / 100, 2)
@@ -589,15 +589,14 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section">About</div>', unsafe_allow_html=True)
     st.markdown("""
     <small style='color:#4a5570;line-height:1.7'>
-    GrowGuru estimates intrinsic value by projecting future revenue, 
+    This model estimates intrinsic value by projecting future revenue, 
     applying a terminal multiple, and discounting back at your desired return.
     <br><br>
     This is a <b style='color:#7b8cad'>learning tool</b>, not financial advice.
     Always do your own research.
     </small>
     """, unsafe_allow_html=True)
-
-
+    
 # ─────────────────────────────────────────────
 # MAIN CONTENT
 # ─────────────────────────────────────────────
