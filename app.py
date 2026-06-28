@@ -467,7 +467,7 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
 
 def build_price_chart(history: pd.DataFrame, ticker: str):
     """
-    Plotly chart: 2-year closing price + 50/200-day SMAs.
+    Plotly chart: Historical closing price + 50/200-day SMAs with time selectors.
     """
     df = history.copy()
     df["SMA50"]  = df["Close"].rolling(50).mean()
@@ -505,11 +505,11 @@ def build_price_chart(history: pd.DataFrame, ticker: str):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif", color="#8a9ab5"),
-        margin=dict(l=0, r=0, t=10, b=0),
+        margin=dict(l=0, r=0, t=40, b=0), # Increased top margin (t=40) to fit buttons
         height=340,
         legend=dict(
             orientation="h",
-            yanchor="bottom", y=1.02,
+            yanchor="bottom", y=1.05, # Shifted slightly up
             xanchor="left",   x=0,
             bgcolor="rgba(0,0,0,0)",
             font=dict(size=11, color="#8a9ab5"),
@@ -518,6 +518,21 @@ def build_price_chart(history: pd.DataFrame, ticker: str):
             gridcolor="#1e2535",
             showline=False,
             tickfont=dict(size=11),
+            type="date", # Ensures Plotly knows these are dates
+            rangeselector=dict(
+                x=1, y=1.05, # Aligns the buttons to the top right
+                xanchor="right", yanchor="bottom",
+                bgcolor="#161b27", # Dark background
+                activecolor="#232a3b", # Slightly lighter when clicked
+                font=dict(size=10, color="#8a9ab5"),
+                buttons=list([
+                    dict(count=1, label="1Y", step="year", stepmode="backward"),
+                    dict(count=2, label="2Y", step="year", stepmode="backward"),
+                    dict(count=3, label="3Y", step="year", stepmode="backward"),
+                    dict(count=5, label="5Y", step="year", stepmode="backward"),
+                    dict(step="all", label="ALL")
+                ])
+            )
         ),
         yaxis=dict(
             gridcolor="#1e2535",
@@ -529,7 +544,6 @@ def build_price_chart(history: pd.DataFrame, ticker: str):
     )
 
     return fig
-
 
 # ─────────────────────────────────────────────
 # SESSION STATE INITIALISATION
