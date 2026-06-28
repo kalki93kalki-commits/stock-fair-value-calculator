@@ -922,3 +922,5 @@ st.markdown("""
   Not financial advice — always do your own research.
 </div>
 """, unsafe_allow_html=True)
+st.markdown("---")
+st.caption("**Disclaimer:** This application is for educational and informational purposes only. It does not constitute financial, investment, or trading advice. The valuations are based on mathematical models and public data, which may be inaccurate or delayed. Always consult with a registered financial advisor before making investment decisions.")
