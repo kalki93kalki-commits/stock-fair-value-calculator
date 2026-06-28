@@ -723,6 +723,55 @@ st.markdown(f"""
   <div class="co-sector">{data['sector']} · {data['industry']}</div>
 </div>
 """, unsafe_allow_html=True)
+# ── Company Health Snapshot ───────────────────────────────────────────────────
+st.markdown('<div class="section-title" style="margin-top:0;">🩺 Company Health Snapshot</div>', unsafe_allow_html=True)
+
+info = data.get("info", {})
+
+# Safely extract the live metrics
+pe_ratio = info.get("trailingPE") or info.get("forwardPE")
+pe_str = f"{pe_ratio:.1f}x" if pe_ratio is not None else "N/A"
+
+profit_margin = info.get("profitMargins")
+margin_str = f"{profit_margin * 100:.1f}%" if profit_margin is not None else "N/A"
+
+roe = info.get("returnOnEquity")
+roe_str = f"{roe * 100:.1f}%" if roe is not None else "N/A"
+
+div_yield = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
+div_str = f"{div_yield * 100:.2f}%" if div_yield is not None else "0.00%"
+
+# Create a row of 4 clean metric boxes
+h1, h2, h3, h4 = st.columns(4)
+
+with h1:
+    st.markdown(f"""
+    <div class="metric-card">
+      <div class="mc-label">P/E Ratio</div>
+      <div class="mc-value">{pe_str}</div>
+      <div class="mc-sub">Price to Earnings</div>
+    </div>""", unsafe_allow_html=True)
+with h2:
+    st.markdown(f"""
+    <div class="metric-card">
+      <div class="mc-label">Net Margin</div>
+      <div class="mc-value" style="color:{'#22c55e' if profit_margin and profit_margin > 0 else '#e8eaf0'}">{margin_str}</div>
+      <div class="mc-sub">Pure profit %</div>
+    </div>""", unsafe_allow_html=True)
+with h3:
+    st.markdown(f"""
+    <div class="metric-card">
+      <div class="mc-label">Return on Equity</div>
+      <div class="mc-value" style="color:{'#22c55e' if roe and roe > 0.15 else '#e8eaf0'}">{roe_str}</div>
+      <div class="mc-sub">Management efficiency</div>
+    </div>""", unsafe_allow_html=True)
+with h4:
+    st.markdown(f"""
+    <div class="metric-card">
+      <div class="mc-label">Dividend Yield</div>
+      <div class="mc-value">{div_str}</div>
+      <div class="mc-sub">Annual cash return</div>
+    </div>""", unsafe_allow_html=True)
 
 # ── Editable Data Fields ───────────────────────────────────────────────────────
 st.markdown('<div class="section-title">📥 Auto-Filled Data (editable)</div>', unsafe_allow_html=True)
