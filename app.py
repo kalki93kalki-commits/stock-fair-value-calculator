@@ -505,11 +505,10 @@ def build_price_chart(history: pd.DataFrame, ticker: str):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif", color="#8a9ab5"),
-        margin=dict(l=0, r=0, t=40, b=0), # Increased top margin (t=40) to fit buttons
-        height=340,
+        margin=dict(l=0, r=0, t=75, b=0), # Increased top margin to give room for stacking
         legend=dict(
             orientation="h",
-            yanchor="bottom", y=1.05, # Shifted slightly up
+            yanchor="bottom", y=1.02, # Keeps the legend just above the chart
             xanchor="left",   x=0,
             bgcolor="rgba(0,0,0,0)",
             font=dict(size=11, color="#8a9ab5"),
@@ -518,12 +517,12 @@ def build_price_chart(history: pd.DataFrame, ticker: str):
             gridcolor="#1e2535",
             showline=False,
             tickfont=dict(size=11),
-            type="date", # Ensures Plotly knows these are dates
+            type="date",
             rangeselector=dict(
-                x=1, y=1.05, # Aligns the buttons to the top right
-                xanchor="right", yanchor="bottom",
-                bgcolor="#161b27", # Dark background
-                activecolor="#232a3b", # Slightly lighter when clicked
+                x=0, y=1.16, # Moved to the TOP LEFT, perfectly stacked above the legend
+                xanchor="left", yanchor="bottom",
+                bgcolor="#161b27", 
+                activecolor="#232a3b", 
                 font=dict(size=10, color="#8a9ab5"),
                 buttons=list([
                     dict(count=1, label="1Y", step="year", stepmode="backward"),
