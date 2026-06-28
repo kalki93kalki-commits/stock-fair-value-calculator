@@ -395,7 +395,7 @@ def run_valuation(last_sales, market_cap, growth_rate, terminal_multiple,
 def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
                              desired_return, hold_years,
                              growth_range=(0.10, 0.15, 0.20, 0.25, 0.30)):
-    """
+   """
     Mirrors the "WHAT IF GROWTH IS FASTER OR SLOWER?" section of the Excel.
     Returns a styled DataFrame with green/red conditional formatting.
     """
@@ -413,7 +413,7 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
             "_diff":                  v["pct_diff"],
         })
 
-   df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
 
     # 1. Calculate Fair Share Price mathematically before adding commas
     df["Fair Share Price (₹)"] = data["price"] * (df["Fair Value Today (₹ Cr)"] / data["market_cap"])
