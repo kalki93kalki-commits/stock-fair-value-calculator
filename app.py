@@ -306,7 +306,7 @@ def pct(value: float) -> str:
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_stock_data(ticker: str):
     """
-    Fetch fundamentals and 2-year price history from yfinance.
+    Fetch fundamentals and maximum price history from yfinance.
     Returns a dict of core fields or raises on failure.
     """
     t = yf.Ticker(ticker)
@@ -327,8 +327,14 @@ def fetch_stock_data(ticker: str):
     revenue_raw = info.get("totalRevenue", 0)
     revenue_cr  = crores(revenue_raw) if revenue_raw else None
 
-    # all-year historical OHLCV
+    # All-year historical OHLCV (Needed for the time-range buttons and P/E chart)
     hist = t.history(period="max", interval="1d", auto_adjust=True)
+    
+    # --- NEW: Fetch financial statements for the P/E chart ---
+    try:
+        financials = t.financials
+    except:
+        financials = None
 
     return {
         "ticker":       ticker.upper(),
@@ -341,6 +347,7 @@ def fetch_stock_data(ticker: str):
         "currency":     info.get("currency", "INR"),
         "history":      hist,
         "info":         info,
+        "financials":   financials, # <-- This is the crucial line you were missing!
     }
 
 
@@ -1019,6 +1026,54 @@ if hist is not None and len(hist) > 60:
         </div>""", unsafe_allow_html=True)
 else:
     st.info("ℹ️ Not enough historical data to plot moving averages (need > 60 trading days).")
+
+# ─────────────────────────────────────────────
+# SECTION 5 — VALUATION HISTORY (P/E VS MEDIAN)
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-title">⚖️ Historical P/E vs Median (Are we buying cheap?)</div>', unsafe_allow_html=True)
+st.markdown(
+    "<small style='color:#4a5570'>"
+    "Compares the stock's current Price-to-Earnings ratio against its own historical baseline. "
+    "Buying below the median line generally indicates better value.</small><br>",
+    unsafe_allow_html=True
+)
+
+financials = data.get("financials")
+if hist is not None and financials is not None:
+    pe_fig, current_pe, median_pe = build_pe_chart(hist, financials)
+    
+    if pe_fig is not None:
+        st.plotly_chart(pe_fig, use_container_width=True)
+        
+        # Quick interpretation boxes underneath the chart
+        p1, p2, p3 = st.columns(3)
+        with p1:
+            st.markdown(f"""
+            <div class="metric-card">
+              <div class="mc-label">Current Trailing P/E</div>
+              <div class="mc-value">{current_pe:.1f}x</div>
+            </div>""", unsafe_allow_html=True)
+        with p2:
+            st.markdown(f"""
+            <div class="metric-card">
+              <div class="mc-label">Historical Median P/E</div>
+              <div class="mc-value" style="color:#f59e0b">{median_pe:.1f}x</div>
+            </div>""", unsafe_allow_html=True)
+        with p3:
+            discount = ((median_pe - current_pe) / median_pe) * 100
+            is_cheap = current_pe < median_pe
+            st.markdown(f"""
+            <div class="metric-card">
+              <div class="mc-label">Valuation Status</div>
+              <div class="mc-value" style="color:{'#22c55e' if is_cheap else '#ef4444'}">
+                {abs(discount):.1f}% {'Discount' if is_cheap else 'Premium'}
+              </div>
+              <div class="mc-sub">Compared to historical median</div>
+            </div>""", unsafe_allow_html=True)
+    else:
+        st.info("ℹ️ yfinance does not have enough historical EPS data for this specific company to build a P/E chart.")
+else:
+    st.info("ℹ️ Missing data required to build the historical valuation chart.")
 
 # ─────────────────────────────────────────────
 # FOOTER
