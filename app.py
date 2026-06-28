@@ -854,7 +854,7 @@ st.markdown('<div class="section-title" style="margin-top:0;">🩺 Company Healt
 
 info = data.get("info", {})
 
-# Safely extract the live metrics
+# Safely extract metrics
 pe_ratio = info.get("trailingPE") or info.get("forwardPE")
 pe_str = f"{pe_ratio:.1f}x" if pe_ratio is not None else "N/A"
 
@@ -866,43 +866,31 @@ roe_str = f"{roe * 100:.1f}%" if roe is not None else "N/A"
 
 div_yield = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
 if div_yield is not None:
-    # If Yahoo Finance already returns it as a percentage (e.g., > 1), don't multiply by 100
-    if div_yield > 1:
-        div_str = f"{div_yield:.2f}%"
-    else:
-        div_str = f"{div_yield * 100:.2f}%"
+    div_str = f"{div_yield:.2f}%" if div_yield > 1 else f"{div_yield * 100:.2f}%"
 else:
     div_str = "0.00%"
-# Create a row of 4 clean metric boxes
-h1, h2, h3, h4 = st.columns(4)
+
+# --- NEW: Debt-to-Equity Calculation ---
+debt_to_equity = info.get("debtToEquity")
+d_e_str = f"{debt_to_equity / 100:.2f}x" if debt_to_equity is not None else "N/A"
+
+# Create 5 columns now
+h1, h2, h3, h4, h5 = st.columns(5)
 
 with h1:
-    st.markdown(f"""
-    <div class="metric-card">
-      <div class="mc-label">P/E Ratio</div>
-      <div class="mc-value">{pe_str}</div>
-      <div class="mc-sub">Price to Earnings</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f'<div class="metric-card"><div class="mc-label">P/E Ratio</div><div class="mc-value">{pe_str}</div></div>', unsafe_allow_html=True)
 with h2:
-    st.markdown(f"""
-    <div class="metric-card">
-      <div class="mc-label">Net Margin</div>
-      <div class="mc-value" style="color:{'#22c55e' if profit_margin and profit_margin > 0 else '#e8eaf0'}">{margin_str}</div>
-      <div class="mc-sub">Pure profit %</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f'<div class="metric-card"><div class="mc-label">Net Margin</div><div class="mc-value" style="color:#22c55e">{margin_str}</div></div>', unsafe_allow_html=True)
 with h3:
-    st.markdown(f"""
-    <div class="metric-card">
-      <div class="mc-label">Return on Equity</div>
-      <div class="mc-value" style="color:{'#22c55e' if roe and roe > 0.15 else '#e8eaf0'}">{roe_str}</div>
-      <div class="mc-sub">Management efficiency</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f'<div class="metric-card"><div class="mc-label">ROE</div><div class="mc-value">{roe_str}</div></div>', unsafe_allow_html=True)
 with h4:
+    st.markdown(f'<div class="metric-card"><div class="mc-label">Div Yield</div><div class="mc-value">{div_str}</div></div>', unsafe_allow_html=True)
+with h5:
     st.markdown(f"""
     <div class="metric-card">
-      <div class="mc-label">Dividend Yield</div>
-      <div class="mc-value">{div_str}</div>
-      <div class="mc-sub">Annual cash return</div>
+      <div class="mc-label">Debt/Equity</div>
+      <div class="mc-value" style="color:{'#ef4444' if debt_to_equity and debt_to_equity > 100 else '#22c55e'}">{d_e_str}</div>
+      <div class="mc-sub">Safety check</div>
     </div>""", unsafe_allow_html=True)
 
 # ── Editable Data Fields ───────────────────────────────────────────────────────
