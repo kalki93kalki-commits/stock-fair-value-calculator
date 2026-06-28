@@ -598,7 +598,7 @@ with st.sidebar:
 # ─────────────────────────────────────────────
 st.markdown("""
 <div class="main-header">
-  <span class="brand-name">Stock</span>
+  <span class="brand-name">STOCK</span>
   <span class="brand-tag">Valuation Analyzer</span>
 </div>
 <p class="tagline">Enter a ticker → get fundamentals auto-filled → see if you're paying too much.</p>
