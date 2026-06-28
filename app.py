@@ -16,7 +16,7 @@ from plotly.subplots import make_subplots
 # PAGE CONFIG
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="GrowGuru · Valuation Analyzer",
+    page_title="Stock · Valuation Analyzer",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -598,32 +598,66 @@ with st.sidebar:
 # ─────────────────────────────────────────────
 st.markdown("""
 <div class="main-header">
-  <span class="brand-name">GrowGuru</span>
+  <span class="brand-name">Stock</span>
   <span class="brand-tag">Valuation Analyzer</span>
 </div>
 <p class="tagline">Enter a ticker → get fundamentals auto-filled → see if you're paying too much.</p>
 """, unsafe_allow_html=True)
 
+import requests
+
 # ── Ticker Search ──────────────────────────────────────────────────────────────
 col_input, col_btn = st.columns([4, 1])
+
 with col_input:
-    st.markdown('<div class="ticker-label">Company Ticker Symbol</div>', unsafe_allow_html=True)
-    ticker_raw = st.text_input(
-        label="ticker",
-        value=st.session_state.ticker_input,
-        placeholder="e.g.  TCS.NS · RELIANCE.NS · INFY.NS · AAPL",
+    st.markdown('<div class="ticker-label">Search Indian Company Name or Ticker</div>', unsafe_allow_html=True)
+    
+    # 1. User types part of the company name (e.g., "Reliance" or "Tata")
+    search_query = st.text_input(
+        label="search",
+        placeholder="e.g. Reliance, Tata Motors, Wipro...",
         label_visibility="collapsed",
     )
+    
+    # 2. Fetch live autocomplete suggestions dynamically
+    suggestions = []
+    if search_query.strip():
+        # Securely hit Yahoo's internal search API
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={search_query.strip()}"
+        headers = {'User-Agent': 'Mozilla/5.0'} 
+        try:
+            res = requests.get(url, headers=headers).json()
+            # Filter specifically for Indian markets (.NS for NSE, .BO for BSE)
+            for q in res.get('quotes', []):
+                sym = q.get('symbol', '')
+                if sym.endswith('.NS') or sym.endswith('.BO'):
+                    name = q.get('longname') or q.get('shortname') or 'Unknown'
+                    suggestions.append(f"{sym}  |  {name}")
+        except Exception:
+            pass
+
+    # 3. Create a dropdown if we found matches, or auto-append .NS if not
+    ticker_raw = ""
+    if suggestions:
+        selected_option = st.selectbox("Select the exact company:", suggestions)
+        # Extract just the ticker (e.g. "RELIANCE.NS" from "RELIANCE.NS | Reliance Industries")
+        ticker_raw = selected_option.split("  |  ")[0]
+    elif search_query.strip():
+        # Fallback: If they type a raw ticker like "TCS" and hit enter, auto-add .NS
+        ticker_raw = search_query.strip().upper()
+        if not ticker_raw.endswith(".NS") and not ticker_raw.endswith(".BO"):
+            ticker_raw += ".NS"
+
 with col_btn:
     st.markdown("<br>", unsafe_allow_html=True)
     analyze_clicked = st.button("Analyze →", use_container_width=True)
 
 # ── Fetch data on button click ─────────────────────────────────────────────────
-if analyze_clicked and ticker_raw.strip():
-    with st.spinner(f"Fetching data for **{ticker_raw.upper()}** …"):
+if analyze_clicked and ticker_raw:
+    with st.spinner(f"Fetching data for **{ticker_raw}** …"):
         try:
-            st.session_state.stock_data = fetch_stock_data(ticker_raw.strip())
-            st.session_state.ticker_input = ticker_raw.strip()
+            st.session_state.stock_data = fetch_stock_data(ticker_raw)
+            st.session_state.ticker_input = ticker_raw
         except Exception as e:
             st.error(f"⚠️ {e}")
             st.session_state.stock_data = None
@@ -634,11 +668,7 @@ if st.session_state.stock_data is None:
     <div style="margin-top:3rem;text-align:center;color:#2e3a54;">
         <div style="font-size:2.5rem;margin-bottom:0.6rem;">📊</div>
         <div style="font-size:1rem;color:#3a4a6a;font-weight:500">
-            Enter a ticker symbol above and press <b style="color:#4a9eff">Analyze →</b>
-        </div>
-        <div style="font-size:0.78rem;color:#2e3a54;margin-top:0.4rem">
-            Indian equities: add <code style="color:#4a9eff">.NS</code> suffix &nbsp;·&nbsp; 
-            US equities: use plain symbol (e.g. AAPL)
+            Search for an Indian company above and press <b style="color:#4a9eff">Analyze →</b>
         </div>
     </div>
     """, unsafe_allow_html=True)
