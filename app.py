@@ -1451,29 +1451,28 @@ if bs is not None and fs is not None and not bs.empty and not fs.empty:
 
         st.markdown(f"""
 <div style="display:flex; gap:1rem; flex-wrap:wrap;">
-    <div style="flex:1; min-width:300px; background:#161b27; border:1px solid #232a3b; border-left:4px solid {ccc_color}; border-radius:8px; padding:1.5rem;">
-        <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.5rem;">Cash Conversion Cycle</div>
-        <div style="font-family:'JetBrains Mono', monospace; font-size:2.4rem; font-weight:700; color:#e8eaf0; margin-bottom:0.2rem;">{ccc:.0f} <span style="font-size:1rem; font-weight:400; color:#5a6a8a;">Days</span></div>
-        <div style="font-size:0.8rem; color:{ccc_color}; font-weight:500;">{ccc_status}</div>
-    </div>
-    
-    <div style="flex:2; display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1rem;">
-        <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-            <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Inventory Days (DIO)</div>
-            <div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dio:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
-            <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time sitting in warehouse</div>
-        </div>
-        <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-            <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Receivable Days (DSO)</div>
-            <div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dso:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
-            <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time to collect from clients</div>
-        </div>
-        <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-            <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Payable Days (DPO)</div>
-            <div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dpo:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
-            <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time taken to pay vendors</div>
-        </div>
-    </div>
+<div style="flex:1; min-width:300px; background:#161b27; border:1px solid #232a3b; border-left:4px solid {ccc_color}; border-radius:8px; padding:1.5rem;">
+<div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.5rem;">Cash Conversion Cycle</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:2.4rem; font-weight:700; color:#e8eaf0; margin-bottom:0.2rem;">{ccc:.0f} <span style="font-size:1rem; font-weight:400; color:#5a6a8a;">Days</span></div>
+<div style="font-size:0.8rem; color:{ccc_color}; font-weight:500;">{ccc_status}</div>
+</div>
+<div style="flex:2; display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1rem;">
+<div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Inventory Days (DIO)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dio:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time sitting in warehouse</div>
+</div>
+<div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Receivable Days (DSO)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dso:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time to collect from clients</div>
+</div>
+<div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Payable Days (DPO)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dpo:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time taken to pay vendors</div>
+</div>
+</div>
 </div>
         """, unsafe_allow_html=True)
     else:
