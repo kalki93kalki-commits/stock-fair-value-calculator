@@ -1513,57 +1513,99 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-peer_input = st.text_input(
-    "Enter Competitor Tickers (comma-separated, e.g. TCS.NS, INFY.NS, HCLTECH.NS)", 
-    placeholder="Enter peers to compare..."
-)
+# 1. Initialize a memory state to hold our selected competitors
+if "peer_list" not in st.session_state:
+    st.session_state.peer_list = []
 
-if peer_input:
-    with st.spinner("Plotting sector matrix..."):
-        # Automatically include the current ticker in the comparison
-        full_peer_list = f"{data['ticker']}, {peer_input}"
-        peer_df = fetch_peer_data(full_peer_list)
-        
-        if not peer_df.empty:
-            fig_scatter = go.Figure()
+# 2. Competitor Search & Add Bar
+c_search, c_btn = st.columns([4, 1])
+with c_search:
+    peer_query = st.text_input("Search and add a competitor (e.g., Maruti, Tata Motors):", placeholder="Type company name...")
+    
+    # Live Yahoo Finance Autocomplete
+    peer_suggestions = []
+    if peer_query.strip():
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={peer_query.strip()}"
+        headers = {'User-Agent': 'Mozilla/5.0'} 
+        try:
+            res = requests.get(url, headers=headers).json()
+            for q in res.get('quotes', []):
+                sym = q.get('symbol', '')
+                if sym.endswith('.NS') or sym.endswith('.BO'):
+                    name = q.get('longname') or q.get('shortname') or 'Unknown'
+                    peer_suggestions.append(f"{sym}  |  {name}")
+        except Exception:
+            pass
             
-            # Highlight the main ticker in blue, peers in grey
-            colors = ["#4a9eff" if t == data['ticker'] else "#5a6a8a" for t in peer_df["Ticker"]]
-            sizes = [20 if t == data['ticker'] else 14 for t in peer_df["Ticker"]]
+    selected_peer_raw = ""
+    if peer_suggestions:
+        selected_peer_raw = st.selectbox("Matches found:", peer_suggestions)
+
+with c_btn:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("➕ Add", use_container_width=True):
+        if selected_peer_raw:
+            new_ticker = selected_peer_raw.split("  |  ")[0]
+            # Prevent adding duplicates or the main company itself
+            if new_ticker not in st.session_state.peer_list and new_ticker != data['ticker']:
+                st.session_state.peer_list.append(new_ticker)
+                st.rerun() # Instantly refresh the UI
+
+# 3. Display selected competitors and Plot Matrix
+if st.session_state.peer_list:
+    # Allows the user to click the 'x' to remove a competitor
+    st.session_state.peer_list = st.multiselect(
+        "Selected Competitors:", 
+        options=st.session_state.peer_list, 
+        default=st.session_state.peer_list
+    )
+    
+    if st.session_state.peer_list:
+        with st.spinner("Plotting sector matrix..."):
+            # Combine current stock + chosen peers
+            full_peer_list = f"{data['ticker']}, {','.join(st.session_state.peer_list)}"
+            peer_df = fetch_peer_data(full_peer_list)
             
-            fig_scatter.add_trace(go.Scatter(
-                x=peer_df["ROE"], 
-                y=peer_df["P/E"],
-                mode="markers+text",
-                text=peer_df["Ticker"],
-                textposition="top center",
-                marker=dict(size=sizes, color=colors, line=dict(width=1, color="#1e2535")),
-                hovertemplate="<b>%{text}</b><br>ROE: %{x:.1f}%<br>P/E: %{y:.1f}x<extra></extra>"
-            ))
-            
-            # Draw Quadrant lines based on the group's median
-            med_roe = peer_df["ROE"].median()
-            med_pe = peer_df["P/E"].median()
-            
-            fig_scatter.add_vline(x=med_roe, line_dash="dash", line_color="#2a3550", annotation_text="Median ROE", annotation_position="bottom right", annotation_font_color="#5a6a8a")
-            fig_scatter.add_hline(y=med_pe, line_dash="dash", line_color="#2a3550", annotation_text="Median P/E", annotation_position="top right", annotation_font_color="#5a6a8a")
-            
-            fig_scatter.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Inter, sans-serif", color="#8a9ab5"),
-                margin=dict(l=0, r=0, t=30, b=0),
-                height=400,
-                xaxis_title="Return on Equity (ROE %)",
-                yaxis_title="P/E Ratio (Valuation)",
-                xaxis=dict(gridcolor="#1e2535", showline=False, ticksuffix="%"),
-                yaxis=dict(gridcolor="#1e2535", showline=False, ticksuffix="x"),
-            )
-            
-            st.plotly_chart(fig_scatter, use_container_width=True)
-            
-            # Interpretation Guide (Zero indentation to prevent Markdown bugs)
-            st.markdown(f"""
+            if not peer_df.empty:
+                fig_scatter = go.Figure()
+                
+                # Highlight the main ticker in blue, peers in grey
+                colors = ["#4a9eff" if t == data['ticker'] else "#5a6a8a" for t in peer_df["Ticker"]]
+                sizes = [20 if t == data['ticker'] else 14 for t in peer_df["Ticker"]]
+                
+                fig_scatter.add_trace(go.Scatter(
+                    x=peer_df["ROE"], 
+                    y=peer_df["P/E"],
+                    mode="markers+text",
+                    text=peer_df["Ticker"],
+                    textposition="top center",
+                    marker=dict(size=sizes, color=colors, line=dict(width=1, color="#1e2535")),
+                    hovertemplate="<b>%{text}</b><br>ROE: %{x:.1f}%<br>P/E: %{y:.1f}x<extra></extra>"
+                ))
+                
+                # Draw Quadrant lines based on the group's median
+                med_roe = peer_df["ROE"].median()
+                med_pe = peer_df["P/E"].median()
+                
+                fig_scatter.add_vline(x=med_roe, line_dash="dash", line_color="#2a3550", annotation_text="Median ROE", annotation_position="bottom right", annotation_font_color="#5a6a8a")
+                fig_scatter.add_hline(y=med_pe, line_dash="dash", line_color="#2a3550", annotation_text="Median P/E", annotation_position="top right", annotation_font_color="#5a6a8a")
+                
+                fig_scatter.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    font=dict(family="Inter, sans-serif", color="#8a9ab5"),
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    height=400,
+                    xaxis_title="Return on Equity (ROE %)",
+                    yaxis_title="P/E Ratio (Valuation)",
+                    xaxis=dict(gridcolor="#1e2535", showline=False, ticksuffix="%"),
+                    yaxis=dict(gridcolor="#1e2535", showline=False, ticksuffix="x"),
+                )
+                
+                st.plotly_chart(fig_scatter, use_container_width=True)
+                
+                # Interpretation Guide (Pushed left to avoid Markdown bug)
+                st.markdown(f"""
 <div style="display:flex; gap:1rem; margin-top:0.5rem; flex-wrap:wrap;">
 <div style="flex:1; min-width:250px; background:rgba(34, 197, 94, 0.05); border:1px solid #232a3b; border-radius:8px; padding:1rem;">
 <div style="font-size:0.75rem; font-weight:600; color:#22c55e;">Bottom-Right (Compounding Engines)</div>
@@ -1574,11 +1616,11 @@ if peer_input:
 <div style="font-size:0.75rem; color:#8a9ab5; margin-top:0.3rem;">Low quality (Low ROE), but expensive (High P/E). High risk quadrant.</div>
 </div>
 </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ Could not fetch data for those competitors. Check the tickers.")
+                """, unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ Could not fetch financial data for those competitors.")
 else:
-    st.info("ℹ️ Enter competitor tickers above to generate the comparison matrix.")
+    st.info("ℹ️ Search and add competitor companies above to generate the comparison matrix.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
