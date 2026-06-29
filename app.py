@@ -351,7 +351,8 @@ def fetch_stock_data(ticker: str):
         "info":         info,
         "financials":   t.financials, 
         "balance_sheet": t.balance_sheet, # <-- Ensure this is added
-        "cashflow":      t.cashflow,      # <-- Ensure this is added
+        "cashflow":      t.cashflow, # <-- Ensure this is added
+        "mf_holders":    mf_holders,
     }
 
 
@@ -1621,6 +1622,85 @@ if st.session_state.peer_list:
                 st.warning("⚠️ Could not fetch financial data for those competitors.")
 else:
     st.info("ℹ️ Search and add competitor companies above to generate the comparison matrix.")
+
+st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# THE WHALE WATCHER (SMART MONEY FLOW)
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-title">🐋 The Whale Watcher (Smart Money Flow)</div>', unsafe_allow_html=True)
+st.markdown(
+    "<small style='color:#7b8cad'>"
+    "Tracks 'Strong Hands' (Promoters & Institutions) vs. 'Weak Hands' (Public Retail). High institutional and promoter holding indicates deep conviction.</small><br><br>",
+    unsafe_allow_html=True
+)
+
+info = data.get("info", {})
+# Safely extract holding percentages (yfinance returns decimals, e.g., 0.55 for 55%)
+promoter_hold = info.get("heldPercentInsiders", 0)
+inst_hold = info.get("heldPercentInstitutions", 0)
+
+if promoter_hold is not None and inst_hold is not None and (promoter_hold > 0 or inst_hold > 0):
+    smart_money = (promoter_hold + inst_hold) * 100
+    retail_money = 100 - smart_money
+
+    # Verdict Logic
+    if smart_money > 75:
+        sm_color, sm_title, sm_desc = "#059669", "🟢 Massive Smart Money Accumulation", "Strong hands own the vast majority of this company. Retail float is low, which can drive prices up quickly on good news."
+    elif smart_money > 50:
+        sm_color, sm_title, sm_desc = "#22c55e", "🟢 Healthy Institutional Backing", "Smart money holds a controlling majority. The stock has solid institutional trust."
+    else:
+        sm_color, sm_title, sm_desc = "#e11d48", "🔴 Retail Dominated (High Risk)", "Weak hands (public) own the majority of this stock. Highly susceptible to panic selling and hype cycles."
+
+    # 1. Render the Verdict Banner and the 3 Cards
+    st.markdown(f"""
+<div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {sm_color}; border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
+<div style="font-size:1.1rem; font-weight:700; color:#ffffff; margin-bottom:0.3rem;">{sm_title}</div>
+<div style="font-size:0.82rem; color:#8a9ab5;">{sm_desc}</div>
+</div>
+
+<div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Skin in the Game (Promoters)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#4a9eff;">{promoter_hold*100:.1f}%</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Founders & Insiders</div>
+</div>
+
+<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Smart Money (Institutions)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#a855f7;">{inst_hold*100:.1f}%</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">FIIs & Mutual Funds</div>
+</div>
+
+<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Weak Hands (Public/Retail)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#f59e0b;">{retail_money:.1f}%</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">General Public</div>
+</div>
+</div>
+    """, unsafe_allow_html=True)
+
+    # 2. Render Top Mutual Funds Table (if data exists)
+    mf_df = data.get("mf_holders")
+    if mf_df is not None and not mf_df.empty:
+        st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">🏦 Top Mutual Funds Holding This Stock</div>', unsafe_allow_html=True)
+        
+        # Clean up the dataframe for display
+        display_mf = mf_df.copy()
+        
+        # Standardize column names if yfinance changes them
+        if 'Holder' in display_mf.columns and 'Shares' in display_mf.columns:
+            display_mf = display_mf[['Holder', 'Shares']]
+            display_mf['Shares'] = display_mf['Shares'].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "N/A")
+            
+            # Use Streamlit's native dataframe styling for a clean look
+            st.dataframe(
+                display_mf.head(5), # Show top 5 funds
+                use_container_width=True, 
+                hide_index=True,
+            )
+else:
+    st.info("ℹ️ Advanced shareholding data (Promoter/Institution breakdown) is not available for this ticker via yfinance.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
