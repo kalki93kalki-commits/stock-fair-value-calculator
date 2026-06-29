@@ -330,13 +330,17 @@ def fetch_stock_data(ticker: str):
     # All-year historical OHLCV (Needed for the time-range buttons and P/E chart)
     hist = t.history(period="max", interval="1d", auto_adjust=True)
     
-   # --- NEW: Fetch full financial statements for Forensic Analysis ---
+    # --- NEW: Safely fetch full statements and mutual fund data ---
+    # 1. Pre-define them as None so Python doesn't panic if data is missing
+    financials = balance_sheet = cashflow = mf_holders = None
+    
     try:
         financials = t.financials
         balance_sheet = t.balance_sheet
         cashflow = t.cashflow
+        mf_holders = t.mutualfund_holders # <-- Fetches the mutual fund data
     except:
-        financials = balance_sheet = cashflow = None
+        pass
 
     return {
         "ticker":       ticker.upper(),
@@ -349,12 +353,12 @@ def fetch_stock_data(ticker: str):
         "currency":     info.get("currency", "INR"),
         "history":      hist,
         "info":         info,
-        "financials":   t.financials, 
-        "balance_sheet": t.balance_sheet, # <-- Ensure this is added
-        "cashflow":      t.cashflow, # <-- Ensure this is added
+        # Use the safe local variables here, NOT t.financials
+        "financials":   financials, 
+        "balance_sheet": balance_sheet, 
+        "cashflow":      cashflow,      
         "mf_holders":    mf_holders,
     }
-
 
 # ─────────────────────────────────────────────
 # CORE VALUATION ENGINE  (mirrors the Excel model)
