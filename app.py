@@ -477,10 +477,10 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
     return styled
 def calculate_f_score(financials, balance_sheet, cashflow):
     """
-    Calculates the Piotroski F-Score and returns a detailed breakdown.
+    Calculates the complete 8-point Piotroski F-Score with dynamic text.
     """
     try:
-        if financials is None or balance_sheet is None or cashflow is None or financials.empty:
+        if financials is None or balance_sheet is None or cashflow is None or financials.empty or balance_sheet.empty or cashflow.empty:
             return None, "Missing financial statements.", "#5a6a8a", []
 
         score = 0
@@ -499,43 +499,85 @@ def calculate_f_score(financials, balance_sheet, cashflow):
             details.append({"name": name, "passed": passed, "desc": desc})
             return 1 if passed else 0
 
-        # Data extraction
+        # Current Year (0) and Prior Year (1) Data
         net_income = get_val(financials, ['Net Income'], 0)
         net_income_py = get_val(financials, ['Net Income'], 1)
         cfo = get_val(cashflow, ['Operating Cash Flow', 'Total Cash From Operating Activities'], 0)
+        
         total_assets = get_val(balance_sheet, ['Total Assets'], 0)
         total_assets_py = get_val(balance_sheet, ['Total Assets'], 1)
-        avg_assets = (total_assets + total_assets_py) / 2 if total_assets_py else total_assets
+        total_assets_ppy = get_val(balance_sheet, ['Total Assets'], 2)
         
-        # 1. ROA check
+        avg_assets = (total_assets + total_assets_py) / 2 if total_assets_py else total_assets
+        avg_assets_py = (total_assets_py + total_assets_ppy) / 2 if total_assets_ppy else total_assets_py
+
+        # 1. Profitability: Positive ROA
         roa = net_income / avg_assets if avg_assets else 0
-        score += add_detail("Positive ROA", roa > 0, "Generating positive income from assets." if roa > 0 else "Negative net income.")
+        score += add_detail("Positive Return on Assets", roa > 0, 
+                            "Generating positive net income from assets." if roa > 0 else "Failing to generate positive net income from assets.")
 
-        # 2. Operating Cash Flow
-        score += add_detail("Positive Ops Cash", cfo > 0, "Core operations generating cash." if cfo > 0 else "Core operations burning cash.")
+        # 2. Profitability: Positive Operating Cash Flow
+        score += add_detail("Positive Operating Cash", cfo > 0, 
+                            "Core operations are actively generating cash." if cfo > 0 else "Core operations are burning cash.")
 
-        # 3. CFO > Net Income
-        score += add_detail("Strong Earnings Quality", cfo > net_income, "Cash flow exceeds net profit." if cfo > net_income else "Profit exceeds cash flow.")
+        # 3. Profitability: Increasing ROA
+        roa_py = net_income_py / avg_assets_py if avg_assets_py else 0
+        score += add_detail("Increasing ROA", roa > roa_py, 
+                            "Efficiency of capital deployment improved." if roa > roa_py else "Efficiency of capital deployment declined.")
 
-        # 4. Leverage (Decreasing Debt)
+        # 4. Profitability: Earnings Quality (CFO > Net Income)
+        score += add_detail("Strong Earnings Quality", cfo > net_income, 
+                            "Cash flow exceeds reported profit (high quality)." if cfo > net_income else "Reported profit exceeds actual cash flow (red flag).")
+
+        # 5. Leverage: Decreasing Long Term Debt Ratio
         lt_debt = get_val(balance_sheet, ['Long Term Debt', 'Total Debt'], 0)
         lt_debt_py = get_val(balance_sheet, ['Long Term Debt', 'Total Debt'], 1)
-        score += add_detail("Decreasing Debt", lt_debt < lt_debt_py, "Debt levels are decreasing." if lt_debt < lt_debt_py else "Debt levels increased.")
+        lt_ratio = lt_debt / total_assets if total_assets else 0
+        lt_ratio_py = lt_debt_py / total_assets_py if total_assets_py else 0
+        score += add_detail("Decreasing Debt Ratio", lt_ratio < lt_ratio_py, 
+                            "Reliance on debt financing has decreased." if lt_ratio < lt_ratio_py else "Reliance on debt financing has increased.")
 
-        # 5. Gross Margin
-        gp = get_val(financials, ['Gross Profit'], 0)
-        rev = get_val(financials, ['Total Revenue', 'Operating Revenue'], 0)
-        gp_py = get_val(financials, ['Gross Profit'], 1)
-        rev_py = get_val(financials, ['Total Revenue', 'Operating Revenue'], 1)
-        margin = gp/rev if rev else 0
-        margin_py = gp_py/rev_py if rev_py else 0
-        score += add_detail("Expanding Margins", margin > margin_py, "Gross margins improving." if margin > margin_py else "Margins shrinking.")
+        # 6. Liquidity: Increasing Current Ratio
+        curr_assets = get_val(balance_sheet, ['Current Assets'], 0)
+        curr_liab = get_val(balance_sheet, ['Current Liabilities'], 0)
+        curr_assets_py = get_val(balance_sheet, ['Current Assets'], 1)
+        curr_liab_py = get_val(balance_sheet, ['Current Liabilities'], 1)
+        cr = curr_assets / curr_liab if curr_liab else 0
+        cr_py = curr_assets_py / curr_liab_py if curr_liab_py else 0
+        score += add_detail("Increasing Current Ratio", cr > cr_py, 
+                            "Short-term liquidity to pay bills improved." if cr > cr_py else "Short-term liquidity to pay bills declined.")
 
-        verdict = "Strong" if score >= 4 else "Weak"
-        color = "#22c55e" if score >= 4 else "#ef4444"
+        # 7. Efficiency: Increasing Gross Margin
+        gross_profit = get_val(financials, ['Gross Profit'], 0)
+        revenue = get_val(financials, ['Total Revenue', 'Operating Revenue'], 0)
+        gross_profit_py = get_val(financials, ['Gross Profit'], 1)
+        revenue_py = get_val(financials, ['Total Revenue', 'Operating Revenue'], 1)
+        margin = gross_profit / revenue if revenue else 0
+        margin_py = gross_profit_py / revenue_py if revenue_py else 0
+        score += add_detail("Expanding Gross Margin", margin > margin_py, 
+                            "Profitability on core products increased." if margin > margin_py else "Profitability on core products shrank.")
+
+        # 8. Efficiency: Increasing Asset Turnover
+        turnover = revenue / avg_assets if avg_assets else 0
+        turnover_py = revenue_py / avg_assets_py if avg_assets_py else 0
+        score += add_detail("Increasing Asset Turnover", turnover > turnover_py, 
+                            "Generating more sales per unit of assets." if turnover > turnover_py else "Generating fewer sales per unit of assets.")
+
+        # Strict Grading Thresholds
+        if score >= 6:
+            verdict = "Pristine Balance Sheet (Strong Operations)"
+            color = "#059669"
+        elif score >= 4:
+            verdict = "Average Financial Health (Monitor closely)"
+            color = "#d97706"
+        else:
+            verdict = "Red Flags Detected (Poor Earnings Quality)"
+            color = "#e11d48"
+
         return score, verdict, color, details
-    except:
-        return None, "Error calculating F-Score", "#5a6a8a", []
+
+    except Exception as e:
+        return None, f"Insufficient data: {e}", "#5a6a8a", []
         
 def build_price_chart(history: pd.DataFrame, ticker: str):
     """
