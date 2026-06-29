@@ -477,15 +477,15 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
     return styled
 def calculate_f_score(financials, balance_sheet, cashflow):
     """
-    Calculates the Piotroski F-Score for forensic accounting quality.
+    Calculates the Piotroski F-Score and returns a detailed breakdown of all 8 criteria.
     """
     try:
         if financials is None or balance_sheet is None or cashflow is None or financials.empty or balance_sheet.empty or cashflow.empty:
-            return None, "Missing financial statements.", "#5a6a8a"
+            return None, "Missing financial statements.", "#5a6a8a", []
 
         score = 0
+        details = []
 
-        # Helper to safely grab data across columns (Current Year vs Prior Year)
         def get_val(df, row_names, col_idx):
             for r in row_names:
                 if r in df.index:
@@ -494,6 +494,10 @@ def calculate_f_score(financials, balance_sheet, cashflow):
                         val = df.loc[r, cols[col_idx]]
                         if pd.notna(val): return val
             return 0
+            
+        def add_detail(name, passed, desc):
+            details.append({"name": name, "passed": passed, "desc": desc})
+            return 1 if passed else 0
 
         # Current Year (0) and Prior Year (1) Data
         net_income = get_val(financials, ['Net Income'], 0)
@@ -504,71 +508,67 @@ def calculate_f_score(financials, balance_sheet, cashflow):
         total_assets_py = get_val(balance_sheet, ['Total Assets'], 1)
         total_assets_ppy = get_val(balance_sheet, ['Total Assets'], 2)
         
-        # Averages for ROA
         avg_assets = (total_assets + total_assets_py) / 2 if total_assets_py else total_assets
         avg_assets_py = (total_assets_py + total_assets_ppy) / 2 if total_assets_ppy else total_assets_py
 
         # 1. Profitability: Positive ROA
         roa = net_income / avg_assets if avg_assets else 0
-        if roa > 0: score += 1
+        score += add_detail("Positive Return on Assets", roa > 0, "Net Income is positive relative to total capital deployed.")
 
         # 2. Profitability: Positive Operating Cash Flow
-        if cfo > 0: score += 1
+        score += add_detail("Positive Operating Cash", cfo > 0, "Core daily operations are actively generating cash.")
 
         # 3. Profitability: Increasing ROA
         roa_py = net_income_py / avg_assets_py if avg_assets_py else 0
-        if roa > roa_py: score += 1
+        score += add_detail("Increasing ROA", roa > roa_py, "Efficiency of capital deployment improved from the previous year.")
 
         # 4. Profitability: Earnings Quality (CFO > Net Income)
-        if cfo > net_income: score += 1
+        score += add_detail("Strong Earnings Quality", cfo > net_income, "Operating cash flow is higher than reported net profit (less accounting tricks).")
 
         # 5. Leverage: Decreasing Long Term Debt Ratio
         lt_debt = get_val(balance_sheet, ['Long Term Debt', 'Total Debt'], 0)
         lt_debt_py = get_val(balance_sheet, ['Long Term Debt', 'Total Debt'], 1)
-        if (lt_debt/total_assets if total_assets else 0) < (lt_debt_py/total_assets_py if total_assets_py else 0): score += 1
+        lt_ratio = lt_debt / total_assets if total_assets else 0
+        lt_ratio_py = lt_debt_py / total_assets_py if total_assets_py else 0
+        score += add_detail("Decreasing Debt Ratio", lt_ratio < lt_ratio_py, "Reliance on debt to finance operations has decreased.")
 
         # 6. Liquidity: Increasing Current Ratio
         curr_assets = get_val(balance_sheet, ['Current Assets'], 0)
         curr_liab = get_val(balance_sheet, ['Current Liabilities'], 0)
         curr_assets_py = get_val(balance_sheet, ['Current Assets'], 1)
         curr_liab_py = get_val(balance_sheet, ['Current Liabilities'], 1)
-        
         cr = curr_assets / curr_liab if curr_liab else 0
         cr_py = curr_assets_py / curr_liab_py if curr_liab_py else 0
-        if cr > cr_py: score += 1
+        score += add_detail("Increasing Current Ratio", cr > cr_py, "Short-term liquidity to pay vendor bills has improved.")
 
         # 7. Efficiency: Increasing Gross Margin
         gross_profit = get_val(financials, ['Gross Profit'], 0)
         revenue = get_val(financials, ['Total Revenue', 'Operating Revenue'], 0)
         gross_profit_py = get_val(financials, ['Gross Profit'], 1)
         revenue_py = get_val(financials, ['Total Revenue', 'Operating Revenue'], 1)
-        
         margin = gross_profit / revenue if revenue else 0
         margin_py = gross_profit_py / revenue_py if revenue_py else 0
-        if margin > margin_py: score += 1
+        score += add_detail("Expanding Gross Margin", margin > margin_py, "Profitability on core products/services increased.")
 
         # 8. Efficiency: Increasing Asset Turnover
         turnover = revenue / avg_assets if avg_assets else 0
         turnover_py = revenue_py / avg_assets_py if avg_assets_py else 0
-        if turnover > turnover_py: score += 1
-        
-        # Note: 9th point (Share Dilution) is omitted because Yahoo Finance API often misreports it for Indian mid-caps. Scored out of 8.
+        score += add_detail("Increasing Asset Turnover", turnover > turnover_py, "Generating more sales volume per unit of physical assets/machinery.")
 
-        # Determine Verdict (Using Aesthetic Colors)
         if score >= 6:
             verdict = "Pristine Balance Sheet (Strong Operations)"
-            color = "#059669" # Soft Emerald
+            color = "#059669"
         elif score >= 4:
             verdict = "Average Financial Health (Monitor closely)"
-            color = "#d97706" # Deep Amber
+            color = "#d97706"
         else:
             verdict = "Red Flags Detected (Poor Earnings Quality)"
-            color = "#e11d48" # Muted Rose
+            color = "#e11d48"
 
-        return score, verdict, color
+        return score, verdict, color, details
 
     except Exception as e:
-        return None, f"Insufficient data: {e}", "#5a6a8a"
+        return None, f"Insufficient data: {e}", "#5a6a8a", []
         
 def build_price_chart(history: pd.DataFrame, ticker: str):
     """
@@ -1196,28 +1196,48 @@ cf = data.get("cashflow")
 fs = data.get("financials")
 
 if bs is not None and cf is not None and fs is not None:
-    f_score, f_verdict, f_color = calculate_f_score(fs, bs, cf)
+    f_score, f_verdict, f_color, f_details = calculate_f_score(fs, bs, cf)
     
     if f_score is not None:
+        # 1. Build the dynamic breakdown grid
+        grid_html = "<div style='display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:0.8rem; margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid #232a3b;'>"
+        for d in f_details:
+            icon = "✅" if d['passed'] else "❌"
+            color = "#22c55e" if d['passed'] else "#ef4444"
+            bg_color = "rgba(34, 197, 94, 0.05)" if d['passed'] else "rgba(239, 68, 68, 0.05)"
+            
+            grid_html += f"""
+            <div style='background:{bg_color}; border:1px solid #232a3b; padding:0.8rem; border-radius:6px;'>
+                <div style='font-size:0.75rem; font-weight:600; color:{color}; margin-bottom:0.2rem;'>
+                    {icon} {d['name']}
+                </div>
+                <div style='font-size:0.7rem; color:#8a9ab5; line-height:1.4;'>{d['desc']}</div>
+            </div>
+            """
+        grid_html += "</div>"
+
+        # 2. Render the main card + the grid
         st.markdown(f"""
-        <div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {f_color}; border-radius:8px; padding:1.5rem; display:flex; align-items:center; gap:2rem;">
-            <div style="text-align:center;">
-                <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">
-                    Quality Score
+        <div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {f_color}; border-radius:8px; padding:1.5rem;">
+            <div style="display:flex; align-items:center; gap:2rem;">
+                <div style="text-align:center; min-width:120px;">
+                    <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">
+                        Quality Score
+                    </div>
+                    <div style="font-family:'JetBrains Mono', monospace; font-size:2.8rem; font-weight:700; color:{f_color}; line-height:1;">
+                        {f_score}<span style="font-size:1.2rem; color:#5a6a8a;">/8</span>
+                    </div>
                 </div>
-                <div style="font-family:'JetBrains Mono', monospace; font-size:2.8rem; font-weight:700; color:{f_color}; line-height:1;">
-                    {f_score}<span style="font-size:1.2rem; color:#5a6a8a;">/8</span>
+                <div style="border-left:1px solid #232a3b; padding-left:2rem;">
+                    <div style="font-size:1.2rem; font-weight:600; color:#e8eaf0; margin-bottom:0.4rem;">
+                        {f_verdict}
+                    </div>
+                    <div style="font-size:0.85rem; color:#8a9ab5; line-height:1.5;">
+                        This score breaks down the underlying health of the business operations, checking if cash is actually flowing, if debt is under control, and if capital is being deployed efficiently.
+                    </div>
                 </div>
             </div>
-            <div style="border-left:1px solid #232a3b; padding-left:2rem;">
-                <div style="font-size:1.2rem; font-weight:600; color:#e8eaf0; margin-bottom:0.4rem;">
-                    {f_verdict}
-                </div>
-                <div style="font-size:0.85rem; color:#8a9ab5; line-height:1.5;">
-                    This score checks if Operating Cash Flow exceeds reported profits, if gross margins are expanding, 
-                    if debt is decreasing, and if the company is generating strong returns on its factory machinery and assets.
-                </div>
-            </div>
+            {grid_html}
         </div>
         """, unsafe_allow_html=True)
     else:
