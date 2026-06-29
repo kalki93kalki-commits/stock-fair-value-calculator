@@ -773,6 +773,62 @@ def build_pe_chart(history: pd.DataFrame, financials: pd.DataFrame):
     except Exception:
         return None, None, None
 
+def build_pe_chart(history: pd.DataFrame, financials: pd.DataFrame):
+    """
+    Calculates historical P/E by merging daily prices with annual EPS.
+    """
+    try:
+        if financials is None or financials.empty:
+            return None, None, None
+            
+        # 1. Find the Earnings Per Share (EPS) row
+        eps_row = None
+        for row in ['Diluted EPS', 'Basic EPS']:
+            if row in financials.index:
+                eps_row = financials.loc[row]
+                break
+                
+        if eps_row is None or eps_row.isna().all():
+            return None, None, None
+            
+        # 2. Format EPS data dates
+        eps_df = eps_row.dropna().reset_index()
+        eps_df.columns = ['Date', 'EPS']
+        eps_df['Date'] = pd.to_datetime(eps_df['Date']).dt.tz_localize(None)
+        eps_df = eps_df.sort_values('Date')
+        
+        # 3. Format Price data dates
+        price_df = history[['Close']].copy().reset_index()
+        price_df['Date'] = pd.to_datetime(price_df['Date']).dt.tz_localize(None)
+        price_df = price_df.sort_values('Date')
+        
+        # 4. Merge daily prices with the most recent EPS available on that day
+        merged = pd.merge_asof(price_df, eps_df, on='Date', direction='backward')
+        merged = merged.dropna()
+        
+        if merged.empty:
+            return None, None, None
+            
+        # 5. Calculate P/E
+        merged['PE'] = merged['Close'] / merged['EPS']
+        merged = merged[(merged['PE'] > 0) & (merged['PE'] < 250)]
+        
+        if merged.empty:
+            return None, None, None
+            
+        median_pe = merged['PE'].median()
+        current_pe = merged['PE'].iloc[-1]
+        
+        # 6. Build Plotly Chart
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=merged['Date'], y=merged['PE'], name="Trailing P/E", line=dict(color="#10b981", width=1.5), fill="tozeroy", fillcolor="rgba(16, 185, 129, 0.08)"))
+        fig.add_hline(y=median_pe, line_dash="dash", line_color="#f59e0b", annotation_text=f"Median: {median_pe:.1f}x")
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter", color="#8a9ab5"), height=320, xaxis=dict(gridcolor="#1e2535"), yaxis=dict(gridcolor="#1e2535", ticksuffix="x"), hovermode="x unified")
+        
+        return fig, current_pe, median_pe
+    except Exception:
+        return None, None, None
+
 # ─────────────────────────────────────────────
 # SESSION STATE INITIALISATION
 # ─────────────────────────────────────────────
