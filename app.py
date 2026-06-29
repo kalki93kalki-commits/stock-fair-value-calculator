@@ -330,11 +330,13 @@ def fetch_stock_data(ticker: str):
     # All-year historical OHLCV (Needed for the time-range buttons and P/E chart)
     hist = t.history(period="max", interval="1d", auto_adjust=True)
     
-    # --- NEW: Fetch financial statements for the P/E chart ---
+   # --- NEW: Fetch full financial statements for Forensic Analysis ---
     try:
         financials = t.financials
+        balance_sheet = t.balance_sheet
+        cashflow = t.cashflow
     except:
-        financials = None
+        financials = balance_sheet = cashflow = None
 
     return {
         "ticker":       ticker.upper(),
@@ -347,7 +349,9 @@ def fetch_stock_data(ticker: str):
         "currency":     info.get("currency", "INR"),
         "history":      hist,
         "info":         info,
-        "financials":   financials, # <-- This is the crucial line you were missing!
+        "financials":   financials, 
+        "balance_sheet": balance_sheet,
+        "cashflow":      cashflow,
     }
 
 
@@ -471,7 +475,101 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
     ])
 
     return styled
+def calculate_f_score(financials, balance_sheet, cashflow):
+    """
+    Calculates the Piotroski F-Score for forensic accounting quality.
+    """
+    try:
+        if financials is None or balance_sheet is None or cashflow is None or financials.empty or balance_sheet.empty or cashflow.empty:
+            return None, "Missing financial statements.", "#5a6a8a"
 
+        score = 0
+
+        # Helper to safely grab data across columns (Current Year vs Prior Year)
+        def get_val(df, row_names, col_idx):
+            for r in row_names:
+                if r in df.index:
+                    cols = df.columns
+                    if len(cols) > col_idx:
+                        val = df.loc[r, cols[col_idx]]
+                        if pd.notna(val): return val
+            return 0
+
+        # Current Year (0) and Prior Year (1) Data
+        net_income = get_val(financials, ['Net Income'], 0)
+        net_income_py = get_val(financials, ['Net Income'], 1)
+        cfo = get_val(cashflow, ['Operating Cash Flow', 'Total Cash From Operating Activities'], 0)
+        
+        total_assets = get_val(balance_sheet, ['Total Assets'], 0)
+        total_assets_py = get_val(balance_sheet, ['Total Assets'], 1)
+        total_assets_ppy = get_val(balance_sheet, ['Total Assets'], 2)
+        
+        # Averages for ROA
+        avg_assets = (total_assets + total_assets_py) / 2 if total_assets_py else total_assets
+        avg_assets_py = (total_assets_py + total_assets_ppy) / 2 if total_assets_ppy else total_assets_py
+
+        # 1. Profitability: Positive ROA
+        roa = net_income / avg_assets if avg_assets else 0
+        if roa > 0: score += 1
+
+        # 2. Profitability: Positive Operating Cash Flow
+        if cfo > 0: score += 1
+
+        # 3. Profitability: Increasing ROA
+        roa_py = net_income_py / avg_assets_py if avg_assets_py else 0
+        if roa > roa_py: score += 1
+
+        # 4. Profitability: Earnings Quality (CFO > Net Income)
+        if cfo > net_income: score += 1
+
+        # 5. Leverage: Decreasing Long Term Debt Ratio
+        lt_debt = get_val(balance_sheet, ['Long Term Debt', 'Total Debt'], 0)
+        lt_debt_py = get_val(balance_sheet, ['Long Term Debt', 'Total Debt'], 1)
+        if (lt_debt/total_assets if total_assets else 0) < (lt_debt_py/total_assets_py if total_assets_py else 0): score += 1
+
+        # 6. Liquidity: Increasing Current Ratio
+        curr_assets = get_val(balance_sheet, ['Current Assets'], 0)
+        curr_liab = get_val(balance_sheet, ['Current Liabilities'], 0)
+        curr_assets_py = get_val(balance_sheet, ['Current Assets'], 1)
+        curr_liab_py = get_val(balance_sheet, ['Current Liabilities'], 1)
+        
+        cr = curr_assets / curr_liab if curr_liab else 0
+        cr_py = curr_assets_py / curr_liab_py if curr_liab_py else 0
+        if cr > cr_py: score += 1
+
+        # 7. Efficiency: Increasing Gross Margin
+        gross_profit = get_val(financials, ['Gross Profit'], 0)
+        revenue = get_val(financials, ['Total Revenue', 'Operating Revenue'], 0)
+        gross_profit_py = get_val(financials, ['Gross Profit'], 1)
+        revenue_py = get_val(financials, ['Total Revenue', 'Operating Revenue'], 1)
+        
+        margin = gross_profit / revenue if revenue else 0
+        margin_py = gross_profit_py / revenue_py if revenue_py else 0
+        if margin > margin_py: score += 1
+
+        # 8. Efficiency: Increasing Asset Turnover
+        turnover = revenue / avg_assets if avg_assets else 0
+        turnover_py = revenue_py / avg_assets_py if avg_assets_py else 0
+        if turnover > turnover_py: score += 1
+        
+        # Note: 9th point (Share Dilution) is omitted because Yahoo Finance API often misreports it for Indian mid-caps. Scored out of 8.
+
+        # Determine Verdict (Using Aesthetic Colors)
+        if score >= 6:
+            verdict = "Pristine Balance Sheet (Strong Operations)"
+            color = "#059669" # Soft Emerald
+        elif score >= 4:
+            verdict = "Average Financial Health (Monitor closely)"
+            color = "#d97706" # Deep Amber
+        else:
+            verdict = "Red Flags Detected (Poor Earnings Quality)"
+            color = "#e11d48" # Muted Rose
+
+        return score, verdict, color
+
+    except Exception as e:
+        return None, f"Insufficient data: {e}", "#5a6a8a"
+        
 def build_price_chart(history: pd.DataFrame, ticker: str):
     """
     Plotly chart: Historical closing price + 50/200-day SMAs with time selectors.
@@ -1079,6 +1177,53 @@ else:
         "would need to be for you to earn exactly your desired yearly return.</p>",
         unsafe_allow_html=True
     )
+
+st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# NEW SECTION — FORENSIC RED FLAG RADAR (F-SCORE)
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-title">🕵️ Forensic Quality Radar (F-Score)</div>', unsafe_allow_html=True)
+st.markdown(
+    "<small style='color:#7b8cad'>"
+    "Scans the balance sheet and cash flows for 8 crucial operational metrics. "
+    "High scores (6-8) indicate genuine cash-backed growth. Low scores (0-3) flag accounting manipulation or operational bleeding.</small><br><br>",
+    unsafe_allow_html=True
+)
+
+bs = data.get("balance_sheet")
+cf = data.get("cashflow")
+fs = data.get("financials")
+
+if bs is not None and cf is not None and fs is not None:
+    f_score, f_verdict, f_color = calculate_f_score(fs, bs, cf)
+    
+    if f_score is not None:
+        st.markdown(f"""
+        <div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {f_color}; border-radius:8px; padding:1.5rem; display:flex; align-items:center; gap:2rem;">
+            <div style="text-align:center;">
+                <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">
+                    Quality Score
+                </div>
+                <div style="font-family:'JetBrains Mono', monospace; font-size:2.8rem; font-weight:700; color:{f_color}; line-height:1;">
+                    {f_score}<span style="font-size:1.2rem; color:#5a6a8a;">/8</span>
+                </div>
+            </div>
+            <div style="border-left:1px solid #232a3b; padding-left:2rem;">
+                <div style="font-size:1.2rem; font-weight:600; color:#e8eaf0; margin-bottom:0.4rem;">
+                    {f_verdict}
+                </div>
+                <div style="font-size:0.85rem; color:#8a9ab5; line-height:1.5;">
+                    This score checks if Operating Cash Flow exceeds reported profits, if gross margins are expanding, 
+                    if debt is decreasing, and if the company is generating strong returns on its factory machinery and assets.
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.info("ℹ️ yfinance is missing deeper balance sheet data to calculate the F-Score.")
+else:
+    st.info("ℹ️ Missing balance sheet or cash flow data required to run forensic tests.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
