@@ -885,6 +885,27 @@ def build_pe_chart(history: pd.DataFrame, financials: pd.DataFrame):
     except Exception:
         return None, None, None
 
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_peer_data(tickers_str):
+    """Fetches P/E and ROE for a comma-separated list of peer tickers."""
+    tickers = [t.strip().upper() for t in tickers_str.split(',') if t.strip()]
+    peer_data = []
+    
+    for t in tickers:
+        if not t.endswith(".NS") and not t.endswith(".BO"):
+            t += ".NS"
+        try:
+            info = yf.Ticker(t).info
+            pe = info.get("trailingPE") or info.get("forwardPE") or 0
+            roe = info.get("returnOnEquity") or 0
+            name = info.get("shortName", t)
+            
+            if pe > 0 and roe != 0:
+                peer_data.append({"Ticker": t, "Name": name, "P/E": pe, "ROE": roe * 100})
+        except:
+            pass
+    return pd.DataFrame(peer_data)
+
 # ─────────────────────────────────────────────
 # SESSION STATE INITIALISATION
 # ─────────────────────────────────────────────
@@ -1479,6 +1500,85 @@ if bs is not None and fs is not None and not bs.empty and not fs.empty:
          st.warning("⚠️ Could not calculate operational efficiency: Missing specific line items.")
 else:
     st.info("ℹ️ Advanced operational metrics unavailable for this ticker.")
+
+st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# COMPETITOR MATRIX (QUALITY VS. PRICE)
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-title">⚔️ The Compounding Engine vs. Value Trap Matrix</div>', unsafe_allow_html=True)
+st.markdown(
+    "<small style='color:#7b8cad'>"
+    "Plot this company against its rivals. <b>High ROE + Low P/E</b> is the magic formula. <b>Low ROE + High P/E</b> is a value trap.</small><br><br>",
+    unsafe_allow_html=True
+)
+
+peer_input = st.text_input(
+    "Enter Competitor Tickers (comma-separated, e.g. TCS.NS, INFY.NS, HCLTECH.NS)", 
+    placeholder="Enter peers to compare..."
+)
+
+if peer_input:
+    with st.spinner("Plotting sector matrix..."):
+        # Automatically include the current ticker in the comparison
+        full_peer_list = f"{data['ticker']}, {peer_input}"
+        peer_df = fetch_peer_data(full_peer_list)
+        
+        if not peer_df.empty:
+            fig_scatter = go.Figure()
+            
+            # Highlight the main ticker in blue, peers in grey
+            colors = ["#4a9eff" if t == data['ticker'] else "#5a6a8a" for t in peer_df["Ticker"]]
+            sizes = [20 if t == data['ticker'] else 14 for t in peer_df["Ticker"]]
+            
+            fig_scatter.add_trace(go.Scatter(
+                x=peer_df["ROE"], 
+                y=peer_df["P/E"],
+                mode="markers+text",
+                text=peer_df["Ticker"],
+                textposition="top center",
+                marker=dict(size=sizes, color=colors, line=dict(width=1, color="#1e2535")),
+                hovertemplate="<b>%{text}</b><br>ROE: %{x:.1f}%<br>P/E: %{y:.1f}x<extra></extra>"
+            ))
+            
+            # Draw Quadrant lines based on the group's median
+            med_roe = peer_df["ROE"].median()
+            med_pe = peer_df["P/E"].median()
+            
+            fig_scatter.add_vline(x=med_roe, line_dash="dash", line_color="#2a3550", annotation_text="Median ROE", annotation_position="bottom right", annotation_font_color="#5a6a8a")
+            fig_scatter.add_hline(y=med_pe, line_dash="dash", line_color="#2a3550", annotation_text="Median P/E", annotation_position="top right", annotation_font_color="#5a6a8a")
+            
+            fig_scatter.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter, sans-serif", color="#8a9ab5"),
+                margin=dict(l=0, r=0, t=30, b=0),
+                height=400,
+                xaxis_title="Return on Equity (ROE %)",
+                yaxis_title="P/E Ratio (Valuation)",
+                xaxis=dict(gridcolor="#1e2535", showline=False, ticksuffix="%"),
+                yaxis=dict(gridcolor="#1e2535", showline=False, ticksuffix="x"),
+            )
+            
+            st.plotly_chart(fig_scatter, use_container_width=True)
+            
+            # Interpretation Guide (Zero indentation to prevent Markdown bugs)
+            st.markdown(f"""
+<div style="display:flex; gap:1rem; margin-top:0.5rem; flex-wrap:wrap;">
+<div style="flex:1; min-width:250px; background:rgba(34, 197, 94, 0.05); border:1px solid #232a3b; border-radius:8px; padding:1rem;">
+<div style="font-size:0.75rem; font-weight:600; color:#22c55e;">Bottom-Right (Compounding Engines)</div>
+<div style="font-size:0.75rem; color:#8a9ab5; margin-top:0.3rem;">High quality (High ROE), but cheap (Low P/E). This is where value is found.</div>
+</div>
+<div style="flex:1; min-width:250px; background:rgba(239, 68, 68, 0.05); border:1px solid #232a3b; border-radius:8px; padding:1rem;">
+<div style="font-size:0.75rem; font-weight:600; color:#ef4444;">Top-Left (Value Traps)</div>
+<div style="font-size:0.75rem; color:#8a9ab5; margin-top:0.3rem;">Low quality (Low ROE), but expensive (High P/E). High risk quadrant.</div>
+</div>
+</div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ Could not fetch data for those competitors. Check the tickers.")
+else:
+    st.info("ℹ️ Enter competitor tickers above to generate the comparison matrix.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
