@@ -1199,52 +1199,50 @@ if bs is not None and cf is not None and fs is not None:
     f_score, f_verdict, f_color, f_details = calculate_f_score(fs, bs, cf)
     
     if f_score is not None:
-        # 1. Build the dynamic breakdown grid
+        # 1. Build the dynamic breakdown grid (Fixed Markdown spacing issue)
         grid_html = "<div style='display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:0.8rem; margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid #232a3b;'>"
         for d in f_details:
             icon = "✅" if d['passed'] else "❌"
             color = "#22c55e" if d['passed'] else "#ef4444"
             bg_color = "rgba(34, 197, 94, 0.05)" if d['passed'] else "rgba(239, 68, 68, 0.05)"
             
-            grid_html += f"""
-            <div style='background:{bg_color}; border:1px solid #232a3b; padding:0.8rem; border-radius:6px;'>
-                <div style='font-size:0.75rem; font-weight:600; color:{color}; margin-bottom:0.2rem;'>
-                    {icon} {d['name']}
-                </div>
-                <div style='font-size:0.7rem; color:#8a9ab5; line-height:1.4;'>{d['desc']}</div>
-            </div>
-            """
+            # Written on single lines to prevent Streamlit from thinking it's a code block
+            grid_html += f"<div style='background:{bg_color}; border:1px solid #232a3b; padding:0.8rem; border-radius:6px;'>"
+            grid_html += f"<div style='font-size:0.75rem; font-weight:600; color:{color}; margin-bottom:0.2rem;'>{icon} {d['name']}</div>"
+            grid_html += f"<div style='font-size:0.7rem; color:#8a9ab5; line-height:1.4;'>{d['desc']}</div>"
+            grid_html += "</div>"
+            
         grid_html += "</div>"
 
         # 2. Render the main card + the grid
         st.markdown(f"""
-        <div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {f_color}; border-radius:8px; padding:1.5rem;">
-            <div style="display:flex; align-items:center; gap:2rem;">
-                <div style="text-align:center; min-width:120px;">
-                    <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">
-                        Quality Score
-                    </div>
-                    <div style="font-family:'JetBrains Mono', monospace; font-size:2.8rem; font-weight:700; color:{f_color}; line-height:1;">
-                        {f_score}<span style="font-size:1.2rem; color:#5a6a8a;">/8</span>
-                    </div>
-                </div>
-                <div style="border-left:1px solid #232a3b; padding-left:2rem;">
-                    <div style="font-size:1.2rem; font-weight:600; color:#e8eaf0; margin-bottom:0.4rem;">
-                        {f_verdict}
-                    </div>
-                    <div style="font-size:0.85rem; color:#8a9ab5; line-height:1.5;">
-                        This score breaks down the underlying health of the business operations, checking if cash is actually flowing, if debt is under control, and if capital is being deployed efficiently.
-                    </div>
-                </div>
+<div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {f_color}; border-radius:8px; padding:1.5rem;">
+    <div style="display:flex; align-items:center; gap:2rem;">
+        <div style="text-align:center; min-width:120px;">
+            <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">
+                Quality Score
             </div>
-            {grid_html}
+            <div style="font-family:'JetBrains Mono', monospace; font-size:2.8rem; font-weight:700; color:{f_color}; line-height:1;">
+                {f_score}<span style="font-size:1.2rem; color:#5a6a8a;">/8</span>
+            </div>
         </div>
+        <div style="border-left:1px solid #232a3b; padding-left:2rem;">
+            <div style="font-size:1.2rem; font-weight:600; color:#e8eaf0; margin-bottom:0.4rem;">
+                {f_verdict}
+            </div>
+            <div style="font-size:0.85rem; color:#8a9ab5; line-height:1.5;">
+                This score breaks down the underlying health of the business operations, checking if cash is actually flowing, if debt is under control, and if capital is being deployed efficiently.
+            </div>
+        </div>
+    </div>
+    {grid_html}
+</div>
         """, unsafe_allow_html=True)
     else:
         st.info("ℹ️ yfinance is missing deeper balance sheet data to calculate the F-Score.")
 else:
     st.info("ℹ️ Missing balance sheet or cash flow data required to run forensic tests.")
-
+    
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
