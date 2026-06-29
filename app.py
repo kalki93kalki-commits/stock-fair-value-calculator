@@ -1273,43 +1273,43 @@ if bs is not None and cf is not None and fs is not None and not bs.empty and not
             
         grid_html += "</div>"
 
-        # Render the main card + the grid
+        # Render the main card + the grid (PUSHED COMPLETELY LEFT TO FIX MARKDOWN BUG)
         st.markdown(f"""
-        <div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {f_color}; border-radius:8px; padding:1.5rem;">
-            <div style="display:flex; align-items:center; gap:2rem;">
-                <div style="text-align:center; min-width:120px;">
-                    <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">
-                        Quality Score
-                    </div>
-                    <div style="font-family:'JetBrains Mono', monospace; font-size:2.8rem; font-weight:700; color:{f_color}; line-height:1;">
-                        {f_score}<span style="font-size:1.2rem; color:#5a6a8a;">/8</span>
-                    </div>
-                </div>
-                <div style="border-left:1px solid #232a3b; padding-left:2rem;">
-                    <div style="font-size:1.2rem; font-weight:600; color:#e8eaf0; margin-bottom:0.4rem;">
-                        {f_verdict}
-                    </div>
-                    <div style="font-size:0.85rem; color:#8a9ab5; line-height:1.5;">
-                        This score breaks down the underlying health of the business operations, checking if cash is actually flowing, if debt is under control, and if capital is being deployed efficiently.
-                    </div>
-                </div>
+<div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {f_color}; border-radius:8px; padding:1.5rem;">
+    <div style="display:flex; align-items:center; gap:2rem;">
+        <div style="text-align:center; min-width:120px;">
+            <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">
+                Quality Score
             </div>
-            {grid_html}
+            <div style="font-family:'JetBrains Mono', monospace; font-size:2.8rem; font-weight:700; color:{f_color}; line-height:1;">
+                {f_score}<span style="font-size:1.2rem; color:#5a6a8a;">/8</span>
+            </div>
         </div>
+        <div style="border-left:1px solid #232a3b; padding-left:2rem;">
+            <div style="font-size:1.2rem; font-weight:600; color:#e8eaf0; margin-bottom:0.4rem;">
+                {f_verdict}
+            </div>
+            <div style="font-size:0.85rem; color:#8a9ab5; line-height:1.5;">
+                This score breaks down the underlying health of the business operations, checking if cash is actually flowing, if debt is under control, and if capital is being deployed efficiently.
+            </div>
+        </div>
+    </div>
+{grid_html}
+</div>
         """, unsafe_allow_html=True)
     else:
         st.warning("⚠️ Could not generate F-Score: Data retrieved was incomplete.")
 else:
     # PROFESSIONAL FALLBACK: Explain the limitation clearly
     st.markdown("""
-    <div style="background:#161b27; border:1px solid #232a3b; border-radius:8px; padding:1.2rem; color:#8a9ab5;">
-        <div style="font-weight:600; color:#4a9eff; margin-bottom:0.3rem;">Data Coverage Note</div>
-        <div style="font-size:0.85rem;">
-            Advanced forensic metrics (Balance Sheet & Cash Flow) are only available for 
-            large-cap companies that maintain consistent digital filings with major exchanges. 
-            For this ticker, comprehensive forensic data is currently unavailable.
-        </div>
+<div style="background:#161b27; border:1px solid #232a3b; border-radius:8px; padding:1.2rem; color:#8a9ab5;">
+    <div style="font-weight:600; color:#4a9eff; margin-bottom:0.3rem;">Data Coverage Note</div>
+    <div style="font-size:0.85rem;">
+        Advanced forensic metrics (Balance Sheet & Cash Flow) are only available for 
+        large-cap companies that maintain consistent digital filings with major exchanges. 
+        For this ticker, comprehensive forensic data is currently unavailable.
     </div>
+</div>
     """, unsafe_allow_html=True)
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
