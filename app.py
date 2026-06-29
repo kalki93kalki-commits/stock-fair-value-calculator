@@ -593,6 +593,45 @@ def calculate_f_score(financials, balance_sheet, cashflow):
 
     except Exception as e:
         return None, f"Insufficient data: {e}", "#5a6a8a", []
+
+def calculate_cash_conversion_cycle(financials, balance_sheet):
+    """
+    Calculates DSO, DIO, DPO, and the Cash Conversion Cycle.
+    """
+    try:
+        if financials is None or balance_sheet is None or financials.empty or balance_sheet.empty:
+            return None
+
+        def get_val(df, row_names, col_idx=0):
+            for r in row_names:
+                if r in df.index:
+                    cols = df.columns
+                    if len(cols) > col_idx:
+                        val = df.loc[r, cols[col_idx]]
+                        if pd.notna(val): return val
+            return 0
+
+        # Pull raw data
+        revenue = get_val(financials, ['Total Revenue', 'Operating Revenue'])
+        cogs = get_val(financials, ['Cost Of Revenue', 'Cost Of Goods Sold'])
+        receivables = get_val(balance_sheet, ['Accounts Receivable', 'Net Receivables'])
+        inventory = get_val(balance_sheet, ['Inventory'])
+        payables = get_val(balance_sheet, ['Accounts Payable'])
+
+        # Fallbacks for zero-division safety (e.g., Software companies with 0 inventory)
+        if revenue == 0: revenue = 1
+        if cogs == 0: cogs = revenue * 0.5 # Rough fallback if COGS is missing
+
+        # Calculate metrics
+        dso = (receivables / revenue) * 365
+        dio = (inventory / cogs) * 365
+        dpo = (payables / cogs) * 365
+        
+        ccc = dso + dio - dpo
+
+        return {"dso": dso, "dio": dio, "dpo": dpo, "ccc": ccc}
+    except Exception:
+        return None
         
 def build_price_chart(history: pd.DataFrame, ticker: str):
     """
@@ -1382,6 +1421,65 @@ else:
     </div>
 </div>
     """, unsafe_allow_html=True)
+
+st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# SHOP-FLOOR EFFICIENCY (CASH CONVERSION CYCLE)
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-title">⚙️ Operational Efficiency (Cash Conversion Cycle)</div>', unsafe_allow_html=True)
+st.markdown(
+    "<small style='color:#7b8cad'>"
+    "Measures the underlying physical business. How fast does the company clear its inventory, collect cash from customers, and pay its vendors?</small><br><br>",
+    unsafe_allow_html=True
+)
+
+bs = data.get("balance_sheet")
+fs = data.get("financials")
+
+if bs is not None and fs is not None and not bs.empty and not fs.empty:
+    ccc_data = calculate_cash_conversion_cycle(fs, bs)
+    
+    if ccc_data is not None:
+        dso, dio, dpo, ccc = ccc_data["dso"], ccc_data["dio"], ccc_data["dpo"], ccc_data["ccc"]
+        
+        # CCC color logic: Lower is better (negative is incredible)
+        if ccc < 0: ccc_color, ccc_status = "#22c55e", "Excellent (Paid by customers before paying vendors)"
+        elif ccc < 60: ccc_color, ccc_status = "#059669", "Healthy Operations"
+        elif ccc < 120: ccc_color, ccc_status = "#d97706", "Average Cash Cycle"
+        else: ccc_color, ccc_status = "#e11d48", "Warning: Capital tied up in operations"
+
+        st.markdown(f"""
+<div style="display:flex; gap:1rem; flex-wrap:wrap;">
+    <div style="flex:1; min-width:300px; background:#161b27; border:1px solid #232a3b; border-left:4px solid {ccc_color}; border-radius:8px; padding:1.5rem;">
+        <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.5rem;">Cash Conversion Cycle</div>
+        <div style="font-family:'JetBrains Mono', monospace; font-size:2.4rem; font-weight:700; color:#e8eaf0; margin-bottom:0.2rem;">{ccc:.0f} <span style="font-size:1rem; font-weight:400; color:#5a6a8a;">Days</span></div>
+        <div style="font-size:0.8rem; color:{ccc_color}; font-weight:500;">{ccc_status}</div>
+    </div>
+    
+    <div style="flex:2; display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1rem;">
+        <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+            <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Inventory Days (DIO)</div>
+            <div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dio:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
+            <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time sitting in warehouse</div>
+        </div>
+        <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+            <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Receivable Days (DSO)</div>
+            <div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dso:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
+            <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time to collect from clients</div>
+        </div>
+        <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
+            <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Payable Days (DPO)</div>
+            <div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:600; color:#e8eaf0;">{dpo:.0f} <span style="font-size:0.8rem; color:#5a6a8a;">Days</span></div>
+            <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Time taken to pay vendors</div>
+        </div>
+    </div>
+</div>
+        """, unsafe_allow_html=True)
+    else:
+         st.warning("⚠️ Could not calculate operational efficiency: Missing specific line items.")
+else:
+    st.info("ℹ️ Advanced operational metrics unavailable for this ticker.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
