@@ -475,6 +475,21 @@ def build_sensitivity_table(last_sales, market_cap, terminal_multiple,
     ])
 
     return styled
+
+def calculate_reverse_dcf(market_cap, last_sales, terminal_multiple, desired_return, hold_years):
+    """
+    Works backward from the current Market Cap to find the exact growth rate
+    the market is pricing into the stock.
+    """
+    if last_sales <= 0 or market_cap <= 0:
+        return 0, 0
+        
+    required_future_worth = market_cap * ((1 + desired_return) ** hold_years)
+    required_sales = required_future_worth / terminal_multiple
+    implied_growth = (required_sales / last_sales) ** (1 / hold_years) - 1
+    
+    return implied_growth, required_sales
+    
 def calculate_f_score(financials, balance_sheet, cashflow):
     """
     Calculates the complete 8-point Piotroski F-Score with dynamic text.
@@ -1242,6 +1257,62 @@ else:
         "would need to be for you to earn exactly your desired yearly return.</p>",
         unsafe_allow_html=True
     )
+
+st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+# REVERSE DCF: MARKET EXPECTATIONS
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-title">🔍 Reverse DCF: What is the market expecting?</div>', unsafe_allow_html=True)
+
+implied_g, req_sales = calculate_reverse_dcf(
+    market_cap=market_cap,
+    last_sales=last_sales,
+    terminal_multiple=terminal_multiple,
+    desired_return=desired_return,
+    hold_years=hold_years
+)
+
+if implied_g > 0.25:
+    g_color = "#e11d48" # Muted Rose (High expectation/caution)
+    g_text = "The market is pricing in aggressive, high-risk growth."
+elif implied_g < 0.12:
+    g_color = "#059669" # Soft Emerald (Low bar to clear/value)
+    g_text = "The market has set a very low bar for this company."
+else:
+    g_color = "#6366f1" # Slate Blue (Fair/Standard expectations)
+    g_text = "The market expects steady, moderate growth."
+
+r1, r2 = st.columns([1, 1.5])
+
+with r1:
+    # Completely left-aligned to prevent Streamlit Markdown spacing bugs
+    st.markdown(f"""
+<div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {g_color}; border-radius:8px; padding:1.5rem;">
+    <div style="font-size:0.7rem; font-weight:600; letter-spacing:0.1em; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.5rem;">
+        Market Implied Growth Rate
+    </div>
+    <div style="font-family:'JetBrains Mono', monospace; font-size:2.2rem; font-weight:700; color:#e8eaf0; margin-bottom:0.5rem;">
+        {implied_g * 100:.1f}% <span style="font-size:1rem; font-weight:400; color:#5a6a8a;">/ yr</span>
+    </div>
+    <div style="font-size:0.8rem; color:#8a9ab5;">
+        {g_text}
+    </div>
+</div>
+    """, unsafe_allow_html=True)
+
+with r2:
+    st.markdown(f"""
+<div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.5rem; height:100%;">
+    <div style="font-size:0.85rem; color:#c9cfe0; line-height:1.6;">
+        To deliver your <b>{desired_return*100:.0f}%</b> annual return from today's price, 
+        this company must grow its revenue from <b>{fmt_crores(last_sales)}</b> today to 
+        <b>{fmt_crores(req_sales)}</b> in {hold_years} years.
+        <br><br>
+        <i>Ask yourself:</i> Is a <b>{implied_g * 100:.1f}%</b> compounding growth rate realistic for this specific business model and industry?
+    </div>
+</div>
+    """, unsafe_allow_html=True)
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
