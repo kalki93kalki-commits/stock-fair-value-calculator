@@ -291,17 +291,49 @@ def crores(value: float) -> float:
     """Convert raw rupee value → crores."""
     return value / 1e7
 
-
 def fmt_crores(value: float, decimals: int = 0) -> str:
     """Format a crore value with commas and ₹ symbol."""
     if value >= 1e5:
         return f"₹{value/1e5:,.2f}L Cr"
     return f"₹{value:,.{decimals}f} Cr"
 
-
 def pct(value: float) -> str:
     return f"{value*100:.1f}%"
 
+# --- NEW: CUSTOM SCREENER.IN SCRAPER ---
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_shareholding_pattern(ticker):
+    """
+    Custom Scraper: Bypasses yfinance to get the last 4 quarters 
+    of shareholding data directly from Screener.in
+    """
+    import requests
+    import pandas as pd
+    
+    clean_ticker = ticker.replace(".NS", "").replace(".BO", "")
+    url = f"https://www.screener.in/company/{clean_ticker}/"
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    
+    try:
+        res = requests.get(url, headers=headers, timeout=5)
+        tables = pd.read_html(res.text)
+        
+        for df in tables:
+            # Locate the exact shareholding table by checking the first column
+            if df.iloc[:, 0].astype(str).str.contains('Promoters').any():
+                df.set_index(df.columns[0], inplace=True)
+                df.index.name = "Category"
+                df.dropna(how='all', inplace=True)
+                
+                # Return only the last 4 quarters (last 4 columns)
+                if len(df.columns) >= 4:
+                    return df.iloc[:, -4:]
+                else:
+                    return df
+    except:
+        return None
+    return None
+# ---------------------------------------
 
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_stock_data(ticker: str):
@@ -1632,32 +1664,60 @@ else:
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# 🐋 THE WHALE WATCHER (SMART MONEY FLOW)
+# 🐋 THE WHALE WATCHER (4-QUARTER SMART MONEY FLOW)
 # ─────────────────────────────────────────────
 st.markdown('<div class="section-title">🐋 The Whale Watcher (Smart Money Flow)</div>', unsafe_allow_html=True)
 st.markdown(
     "<small style='color:#7b8cad'>"
-    "Tracks 'Strong Hands' (Promoters & Institutions) vs. 'Weak Hands' (Public Retail) based on live API data.</small><br><br>",
+    "Custom Screener.in Scraper deployed: Tracking the exact quarter-by-quarter momentum of Promoters, FIIs, and DIIs (Mutual Funds).</small><br><br>",
     unsafe_allow_html=True
 )
 
-info = data.get("info", {})
-promoter_hold = info.get("heldPercentInsiders", 0)
-inst_hold = info.get("heldPercentInstitutions", 0)
+# Run the custom scraper
+shp_df = fetch_shareholding_pattern(data['ticker'])
 
-if promoter_hold is not None and inst_hold is not None and (promoter_hold > 0 or inst_hold > 0):
-    smart_money = (promoter_hold + inst_hold) * 100
-    retail_money = 100 - smart_money
+if shp_df is not None and not shp_df.empty:
+    cols = shp_df.columns
+    latest_q = cols[-1]
+    prev_q = cols[-2]
+    
+    # Safely extract and calculate momentum
+    def get_val(cat):
+        try:
+            val = str(shp_df.loc[cat, latest_q]).replace('%', '')
+            return float(val)
+        except: return 0.0
+            
+    def get_diff(cat):
+        try:
+            v1 = float(str(shp_df.loc[cat, latest_q]).replace('%', ''))
+            v2 = float(str(shp_df.loc[cat, prev_q]).replace('%', ''))
+            return v1 - v2
+        except: return 0.0
 
-    # Verdict Logic
+    promoter_hold = get_val('Promoters')
+    fii_hold = get_val('FIIs')
+    dii_hold = get_val('DIIs')
+    public_hold = get_val('Public')
+    
+    p_diff = get_diff('Promoters')
+    f_diff = get_diff('FIIs')
+    d_diff = get_diff('DIIs')
+    
+    smart_money = promoter_hold + fii_hold + dii_hold
+    
     if smart_money > 75:
-        sm_color, sm_title, sm_desc = "#059669", "🟢 Massive Smart Money Accumulation", "Strong hands own the vast majority of this company. Retail float is low, which can drive prices up quickly on good news."
+        sm_color, sm_title, sm_desc = "#059669", "🟢 Massive Smart Money Accumulation", f"Strong hands own {smart_money:.2f}% of this company. Retail float is extremely low."
     elif smart_money > 50:
-        sm_color, sm_title, sm_desc = "#22c55e", "🟢 Healthy Institutional Backing", "Smart money holds a controlling majority. The stock has solid institutional trust."
+        sm_color, sm_title, sm_desc = "#22c55e", "🟢 Healthy Institutional Backing", f"Smart money holds {smart_money:.2f}%. The stock has solid institutional trust."
     else:
-        sm_color, sm_title, sm_desc = "#e11d48", "🔴 Retail Dominated (High Risk)", "Weak hands (public) own the majority of this stock. Highly susceptible to panic selling and hype cycles."
+        sm_color, sm_title, sm_desc = "#e11d48", "🔴 Retail Dominated (High Risk)", f"Weak hands (public) own {public_hold:.2f}% of this stock. Highly susceptible to panic selling."
 
-    # 1. Render the Verdict Banner and the 3 Automated Cards (No Manual Inputs)
+    def format_qoq(val):
+        if val > 0.01: return f"<span style='color:#22c55e; font-size:0.75rem; font-weight:700;'>▲ +{val:.2f}%</span>"
+        elif val < -0.01: return f"<span style='color:#ef4444; font-size:0.75rem; font-weight:700;'>▼ {val:.2f}%</span>"
+        else: return f"<span style='color:#5a6a8a; font-size:0.75rem; font-weight:700;'>▬ 0.00%</span>"
+
     st.markdown(f"""
 <div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {sm_color}; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem;">
 <div style="font-size:1.1rem; font-weight:700; color:#ffffff; margin-bottom:0.3rem;">{sm_title}</div>
@@ -1666,71 +1726,55 @@ if promoter_hold is not None and inst_hold is not None and (promoter_hold > 0 or
 
 <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
 <div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Skin in the Game</div>
-<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#4a9eff;">{promoter_hold*100:.1f}%</div>
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Skin in the Game (Promoters)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.5rem; font-weight:700; color:#4a9eff; display:flex; align-items:center; gap:0.6rem;">
+    {promoter_hold:.2f}% {format_qoq(p_diff)}
+</div>
 <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Founders & Insiders</div>
 </div>
 
 <div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Smart Money</div>
-<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#a855f7;">{inst_hold*100:.1f}%</div>
-<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Institutions (FII & DII)</div>
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Foreign Inst. (FII)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.5rem; font-weight:700; color:#a855f7; display:flex; align-items:center; gap:0.6rem;">
+    {fii_hold:.2f}% {format_qoq(f_diff)}
+</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Foreign Smart Money</div>
 </div>
 
 <div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Weak Hands</div>
-<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#f59e0b;">{retail_money:.1f}%</div>
-<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">General Public / Retail</div>
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Domestic Inst. (DII)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.5rem; font-weight:700; color:#059669; display:flex; align-items:center; gap:0.6rem;">
+    {dii_hold:.2f}% {format_qoq(d_diff)}
+</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Mutual Funds & LIC</div>
 </div>
 </div>
     """, unsafe_allow_html=True)
+    
+    st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">📊 Last 4 Quarters Trend</div>', unsafe_allow_html=True)
+    
+    table_html = """
+    <div style="border:1px solid #232a3b; border-radius:8px; overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem;">
+        <tr style="background-color:#161b27; border-bottom:1px solid #232a3b;">
+            <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">Investor Category</th>
+    """
+    for c in cols: table_html += f'<th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">{c}</th>'
+    table_html += "</tr>"
+    
+    for index, row in shp_df.iterrows():
+        table_html += f'<tr style="border-bottom:1px solid #1e2535; background-color:rgba(30, 41, 59, 0.2);">'
+        table_html += f'<td style="padding:12px 16px; color:#e8eaf0; font-weight:600;">{index}</td>'
+        for c in cols:
+            val = str(row[c]).replace('%', '')
+            table_html += f'<td style="padding:12px 16px; color:#8a9ab5; font-family:\'JetBrains Mono\', monospace;">{val}%</td>'
+        table_html += "</tr>"
+        
+    table_html += "</table></div>"
+    st.markdown(table_html, unsafe_allow_html=True)
 
-    # 2. Render Top Mutual Funds Table (With a forced error message if the API fails)
-    mf_df = data.get("mf_holders")
-    if mf_df is not None and not mf_df.empty:
-        st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">🏦 Top Mutual Funds Holding This Stock</div>', unsafe_allow_html=True)
-        
-        table_html = """
-        <div style="border:1px solid #232a3b; border-radius:8px; overflow:hidden;">
-        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem;">
-            <tr style="background-color:#161b27; border-bottom:1px solid #232a3b;">
-                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Fund Name</th>
-                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Shares Owned</th>
-                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">% of Company</th>
-            </tr>
-        """
-        
-        for index, row in mf_df.head(6).iterrows():
-            holder = row.get("Holder", "Unknown Fund")
-            shares = row.get("Shares", 0)
-            
-            pct = 0.0
-            if "pctHeld" in row and pd.notna(row["pctHeld"]): pct = float(row["pctHeld"])
-            elif "% Out" in row and pd.notna(row["% Out"]): pct = float(row["% Out"])
-            
-            shares_str = f"{shares:,.0f}" if pd.notna(shares) and shares != 0 else "N/A"
-            pct_str = f"{pct*100:.2f}%" if pct > 0 and pct < 1 else f"{pct:.2f}%" if pct > 0 else "N/A"
-            
-            table_html += f"""
-            <tr style="border-bottom:1px solid #1e2535; background-color:rgba(30, 41, 59, 0.2);">
-                <td style="padding:12px 16px; color:#e8eaf0; font-weight:500;">{holder}</td>
-                <td style="padding:12px 16px; color:#8a9ab5; font-family:'JetBrains Mono', monospace;">{shares_str}</td>
-                <td style="padding:12px 16px; color:#22c55e; font-weight:600; font-family:'JetBrains Mono', monospace;">{pct_str}</td>
-            </tr>
-            """
-            
-        table_html += "</table></div>"
-        st.markdown(table_html, unsafe_allow_html=True)
-    else:
-        # THE FIX: If yfinance returns an empty list, explicitly tell the user why it's blank.
-        st.markdown("""
-        <div style="background:rgba(239, 68, 68, 0.05); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-            <div style="font-size:0.8rem; color:#e8eaf0; font-weight:600;">⚠️ Mutual Fund Data Unavailable</div>
-            <div style="font-size:0.75rem; color:#8a9ab5; margin-top:0.3rem;">Yahoo Finance has not published the specific mutual fund breakdown for this ticker on their free data feed. This is a common limitation for certain Indian mid/small-cap equities.</div>
-        </div>
-        """, unsafe_allow_html=True)
 else:
-    st.info("ℹ️ Advanced shareholding data (Promoter/Institution breakdown) is not available for this ticker via yfinance.")
+    st.warning("⚠️ Custom Scraper Failed: Could not extract public shareholding data for this ticker.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
