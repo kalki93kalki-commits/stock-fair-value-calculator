@@ -352,6 +352,7 @@ def fetch_shareholding_pattern(ticker):
     return None
 # ---------------------------------------
 # ---------------------------------------
+import requests_cache
 
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_stock_data(ticker: str):
