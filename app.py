@@ -1794,6 +1794,78 @@ else:
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
+# ─────────────────────────────────────────────
+# 🎙️ MANAGEMENT GUIDANCE & REALITY CHECK
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-title">🎙️ Management Guidance & Reality Check</div>', unsafe_allow_html=True)
+st.markdown(
+    "<small style='color:#7b8cad'>"
+    "Connect the narrative to the math. Use the links below to access the latest conference call transcript, then enter management's growth guidance to see if it justifies today's stock price.</small><br><br>",
+    unsafe_allow_html=True
+)
+
+c1, c2 = st.columns([1, 2])
+
+with c1:
+    # Clean the ticker to make it compatible with external Indian financial sites
+    clean_ticker = data['ticker'].replace(".NS", "").replace(".BO", "")
+    
+    # 1-Click buttons to external transcript sources
+    st.markdown(f"""
+<div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem; height:100%;">
+<div style="font-size:0.8rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:1rem; font-weight:600;">🔗 Direct Transcript Links</div>
+<a href="https://www.screener.in/company/{clean_ticker}/consolidated/" target="_blank" style="display:block; text-decoration:none; background:#161b27; border:1px solid #2a3550; padding:0.8rem; border-radius:6px; color:#4a9eff; font-weight:600; margin-bottom:0.5rem; text-align:center; transition:0.2s;">📄 Screener.in (Concalls)</a>
+<a href="https://trendlyne.com/equity/earnings-calls/{clean_ticker}/" target="_blank" style="display:block; text-decoration:none; background:#161b27; border:1px solid #2a3550; padding:0.8rem; border-radius:6px; color:#4a9eff; font-weight:600; margin-bottom:0.5rem; text-align:center; transition:0.2s;">🎙️ Trendlyne (Audio/Text)</a>
+<a href="https://www.bseindia.com/stock-share-price/x/{clean_ticker}/" target="_blank" style="display:block; text-decoration:none; background:#161b27; border:1px solid #2a3550; padding:0.8rem; border-radius:6px; color:#4a9eff; font-weight:600; text-align:center; transition:0.2s;">🏛️ BSE India Filings</a>
+</div>
+    """, unsafe_allow_html=True)
+
+with c2:
+    st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">⚖️ Guidance vs. Market Reality Test</div>', unsafe_allow_html=True)
+    
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        mgmt_growth_input = st.number_input("Management Growth Target (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
+        mgmt_growth = mgmt_growth_input / 100.0
+    with col_g2:
+        mgmt_margin = st.number_input("Management Margin Outlook (%)", min_value=0.0, max_value=100.0, value=18.0, step=1.0)
+        
+    # Pull the required growth from the Reverse DCF calculation above
+    try:
+        req_g = implied_g 
+    except:
+        req_g = 0.15 
+        
+    diff = mgmt_growth - req_g
+    
+    # Grading Logic
+    if diff >= 0.05:
+        verdict_color, verdict_icon, verdict_text = "#22c55e", "🟢", "Highly Undervalued: Management expects growth significantly higher than what the current stock price demands."
+    elif diff >= -0.02:
+        verdict_color, verdict_icon, verdict_text = "#f59e0b", "🟡", "Fairly Priced: Management's guidance closely matches the growth rate already priced into the stock."
+    else:
+        verdict_color, verdict_icon, verdict_text = "#ef4444", "🔴", "Valuation Disconnect: The stock price requires a growth rate much higher than what management expects to deliver."
+        
+    st.markdown(f"""
+<div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {verdict_color}; border-radius:8px; padding:1.2rem; margin-top:0.5rem;">
+<div style="display:flex; justify-content:space-between; margin-bottom:0.8rem;">
+<div>
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase;">Market Requires</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:700; color:#e8eaf0;">{req_g*100:.1f}%</div>
+</div>
+<div style="text-align:right;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase;">Management Guides</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.4rem; font-weight:700; color:{verdict_color};">{mgmt_growth*100:.1f}%</div>
+</div>
+</div>
+<div style="font-size:0.85rem; color:#c9cfe0; line-height:1.5; border-top:1px solid #232a3b; padding-top:0.8rem;">
+<b>{verdict_icon} Verdict:</b> {verdict_text}
+</div>
+</div>
+    """, unsafe_allow_html=True)
+    
+st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
+
 
 # ─────────────────────────────────────────────
 # SECTION 4 — TECHNICAL ANALYSIS CHART
