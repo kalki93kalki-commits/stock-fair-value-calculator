@@ -352,15 +352,15 @@ def fetch_shareholding_pattern(ticker):
     return None
 # ---------------------------------------
 # ---------------------------------------
-import requests_cache
+import requests  # Ensure standard requests is imported at the top of your file
 
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_stock_data(ticker: str):
     """
     Fetch fundamentals and maximum price history from yfinance safely.
     """
-    # 1. Setup the SQLite cache
-    session = requests_cache.CachedSession('yfinance_cache', expire_after=3600)
+    # 1. Use a standard requests session (yfinance blocks requests_cache)
+    session = requests.Session()
     
     # 2. THE FIX: Disguise the Python bot as a normal Google Chrome web browser
     session.headers.update({
