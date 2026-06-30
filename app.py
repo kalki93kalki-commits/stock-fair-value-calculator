@@ -373,15 +373,19 @@ def fetch_stock_data(ticker: str):
     t = yf.Ticker(ticker, session=session)
     
     info = t.info
+    
+    # All-year historical OHLCV (We pull this FIRST to prove the stock exists)
+    hist = t.history(period="max", interval="1d", auto_adjust=True)
 
-    # Validate the ticker returned something meaningful
-    if not info or info.get("regularMarketPrice") is None:
+    # Validate the ticker by checking if it actually returned chart data
+    if hist is None or hist.empty:
         raise ValueError(f"No data found for ticker '{ticker}'. Check the symbol and try again.")
+
+    # Safely extract the current price, falling back to the raw chart if the API is broken
+    price = info.get("currentPrice") or info.get("previousClose")
+    if price is None and not hist.empty:
+        price = float(hist["Close"].iloc[-1])
         
-
-    # Current share price
-    price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
-
     # Market cap in crores (raw value is in ₹ for Indian equities)
     market_cap_raw = info.get("marketCap", 0)
     market_cap_cr  = crores(market_cap_raw) if market_cap_raw else None
