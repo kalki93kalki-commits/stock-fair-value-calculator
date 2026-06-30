@@ -1726,25 +1726,37 @@ if news_list and len(news_list) > 0:
     import datetime
     
     news_html = '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1rem; margin-bottom:2rem;">'
+    valid_articles = 0
     
-    for item in news_list[:6]:  # Limit to the 6 most recent articles
-        title = item.get("title", "No Title")
-        publisher = item.get("publisher", "Unknown Publisher")
-        link = item.get("link", "#")
-        timestamp = item.get("providerPublishTime")
-        
-        # Convert raw computer timestamp to a readable date
-        if timestamp:
-            dt = datetime.datetime.fromtimestamp(timestamp)
-            time_str = dt.strftime("%d %b %Y")
-        else:
-            time_str = "Recent"
+    for item in news_list:
+        if valid_articles >= 6:
+            break
             
-        # Mini-Sentiment Engine based on headline keywords
+        # 1. Bulletproof Parsing: Check for both old and new Yahoo Finance formats
+        title = item.get("title") or item.get("content", {}).get("title", "")
+        publisher = item.get("publisher") or item.get("content", {}).get("provider", {}).get("displayName", "Unknown")
+        link = item.get("link") or item.get("content", {}).get("clickThroughUrl", {}).get("url", "#")
+        
+        # Skip empty/broken payload items so we don't draw blank cards
+        if not title:
+            continue
+            
+        timestamp = item.get("providerPublishTime")
+        if timestamp:
+            try:
+                dt = datetime.datetime.fromtimestamp(timestamp)
+                time_str = dt.strftime("%d %b %Y")
+            except:
+                time_str = "Recent"
+        else:
+            pub_date = item.get("content", {}).get("pubDate", "")
+            time_str = pub_date.split("T")[0] if pub_date else "Recent"
+            
+        # 2. Mini-Sentiment Engine based on headline keywords
         tl = title.lower()
         if any(w in tl for w in ['surge', 'jump', 'gain', 'buy', 'up', 'high', 'bull', 'soar', 'beat', 'profit', 'upgrade']):
             badge = "<span style='background:rgba(34,197,94,0.1); color:#22c55e; border:1px solid rgba(34,197,94,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Positive Tone</span>"
-        elif any(w in tl for w in ['drop', 'fall', 'plunge', 'sell', 'down', 'low', 'bear', 'crash', 'miss', 'loss', 'warning', 'downgrade']):
+        elif any(w in tl for w in ['drop', 'fall', 'plunge', 'sell', 'down', 'low', 'bear', 'crash', 'miss', 'loss', 'warning', 'downgrade', 'penalty']):
             badge = "<span style='background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Negative Tone</span>"
         else:
             badge = "<span style='background:rgba(90,106,138,0.1); color:#8a9ab5; border:1px solid rgba(90,106,138,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Neutral / Factual</span>"
@@ -1752,6 +1764,7 @@ if news_list and len(news_list) > 0:
         # Safely escape quotes in title so it doesn't break the HTML
         title_safe = title.replace('"', '&quot;').replace("'", "&#39;")
         
+        # 3. Draw the UI Card (Zero indentation for Markdown safety)
         news_html += f"""
 <a href="{link}" target="_blank" style="text-decoration:none; color:inherit;">
 <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem; height:100%; transition:all 0.2s ease;">
@@ -1768,9 +1781,14 @@ if news_list and len(news_list) > 0:
 </div>
 </a>
         """
+        valid_articles += 1
         
     news_html += '</div>'
-    st.markdown(news_html, unsafe_allow_html=True)
+    
+    if valid_articles > 0:
+        st.markdown(news_html, unsafe_allow_html=True)
+    else:
+        st.info("ℹ️ No recent news articles found for this ticker on Yahoo Finance.")
 else:
     st.info("ℹ️ No recent news articles found for this ticker on Yahoo Finance.")
 
