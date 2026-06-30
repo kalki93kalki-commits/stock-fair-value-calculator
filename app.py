@@ -1527,7 +1527,7 @@ if "peer_list" not in st.session_state:
 # 2. Competitor Search & Add Bar
 c_search, c_btn = st.columns([4, 1])
 with c_search:
-    peer_query = st.text_input("Search and add a competitor (e.g., Maruti, Tata Motors):", placeholder="Type company name...")
+    peer_query = st.text_input("Search and add a competitor:", placeholder="Type company name...")
     
     # Live Yahoo Finance Autocomplete
     peer_suggestions = []
@@ -1632,19 +1632,35 @@ else:
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# THE WHALE WATCHER (SMART MONEY FLOW)
+# 🐋 THE WHALE WATCHER (SMART MONEY FLOW)
 # ─────────────────────────────────────────────
 st.markdown('<div class="section-title">🐋 The Whale Watcher (Smart Money Flow)</div>', unsafe_allow_html=True)
 st.markdown(
     "<small style='color:#7b8cad'>"
-    "Tracks 'Strong Hands' (Promoters & Institutions) vs. 'Weak Hands' (Public Retail). High institutional and promoter holding indicates deep conviction.</small><br><br>",
+    "Tracks 'Strong Hands' (Promoters & Institutions) vs. 'Weak Hands' (Public Retail). Input the latest quarterly changes from the company filings below to track the momentum.</small><br><br>",
     unsafe_allow_html=True
 )
 
 info = data.get("info", {})
-# Safely extract holding percentages (yfinance returns decimals, e.g., 0.55 for 55%)
 promoter_hold = info.get("heldPercentInsiders", 0)
 inst_hold = info.get("heldPercentInstitutions", 0)
+
+# Add Interactive QoQ Input Fields with explicitly defined keys
+c_qoq1, c_qoq2 = st.columns(2)
+with c_qoq1:
+    promoter_qoq = st.number_input(
+        "Promoter Q-o-Q Change (%)", 
+        min_value=-100.0, max_value=100.0, value=0.0, step=0.1, 
+        key="fixed_promoter_qoq",
+        help="Example: If promoters bought 1.5% more this quarter, enter 1.5"
+    )
+with c_qoq2:
+    inst_qoq = st.number_input(
+        "FII/DII Q-o-Q Change (%)", 
+        min_value=-100.0, max_value=100.0, value=0.0, step=0.1, 
+        key="fixed_inst_qoq",
+        help="Example: If institutions sold -0.5% this quarter, enter -0.5"
+    )
 
 if promoter_hold is not None and inst_hold is not None and (promoter_hold > 0 or inst_hold > 0):
     smart_money = (promoter_hold + inst_hold) * 100
@@ -1658,53 +1674,98 @@ if promoter_hold is not None and inst_hold is not None and (promoter_hold > 0 or
     else:
         sm_color, sm_title, sm_desc = "#e11d48", "🔴 Retail Dominated (High Risk)", "Weak hands (public) own the majority of this stock. Highly susceptible to panic selling and hype cycles."
 
-    # 1. Render the Verdict Banner and the 3 Cards
+    # Format the QoQ Trend Badges
+    def format_qoq(val):
+        if val > 0: return f"<span style='color:#22c55e; font-size:0.8rem; font-weight:700;'>▲ +{val:.2f}%</span>"
+        elif val < 0: return f"<span style='color:#ef4444; font-size:0.8rem; font-weight:700;'>▼ {val:.2f}%</span>"
+        else: return f"<span style='color:#5a6a8a; font-size:0.8rem; font-weight:700;'>▬ Unchanged</span>"
+
+    p_badge = format_qoq(promoter_qoq)
+    i_badge = format_qoq(inst_qoq)
+    
+    # Calculate Retail QoQ Change (Whatever Smart Money buys, Retail lost, and vice versa)
+    retail_qoq = -(promoter_qoq + inst_qoq)
+    r_badge = format_qoq(retail_qoq)
+
+    # 1. Render the Verdict Banner and the 3 Dynamic Cards
     st.markdown(f"""
-<div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {sm_color}; border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
+<div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {sm_color}; border-radius:8px; padding:1.5rem; margin-bottom:1rem; margin-top:0.5rem;">
 <div style="font-size:1.1rem; font-weight:700; color:#ffffff; margin-bottom:0.3rem;">{sm_title}</div>
 <div style="font-size:0.82rem; color:#8a9ab5;">{sm_desc}</div>
 </div>
 
 <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
-<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Skin in the Game (Promoters)</div>
-<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#4a9eff;">{promoter_hold*100:.1f}%</div>
+<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem; position:relative;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Skin in the Game</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#4a9eff; display:flex; align-items:center; gap:0.6rem;">
+    {promoter_hold*100:.1f}% 
+    {p_badge}
+</div>
 <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Founders & Insiders</div>
 </div>
 
-<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Smart Money (Institutions)</div>
-<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#a855f7;">{inst_hold*100:.1f}%</div>
-<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">FIIs & Mutual Funds</div>
+<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem; position:relative;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Smart Money</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#a855f7; display:flex; align-items:center; gap:0.6rem;">
+    {inst_hold*100:.1f}%
+    {i_badge}
+</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Institutions (FII & DII)</div>
 </div>
 
-<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
-<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Weak Hands (Public/Retail)</div>
-<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#f59e0b;">{retail_money:.1f}%</div>
-<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">General Public</div>
+<div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem; position:relative;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Weak Hands</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:#f59e0b; display:flex; align-items:center; gap:0.6rem;">
+    {retail_money:.1f}%
+    {r_badge}
+</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">General Public / Retail</div>
 </div>
 </div>
     """, unsafe_allow_html=True)
 
-    # 2. Render Top Mutual Funds Table (if data exists)
+    # 2. Render Top Mutual Funds Table (Premium Custom HTML)
     mf_df = data.get("mf_holders")
     if mf_df is not None and not mf_df.empty:
         st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">🏦 Top Mutual Funds Holding This Stock</div>', unsafe_allow_html=True)
         
-        # Clean up the dataframe for display
-        display_mf = mf_df.copy()
+        # Build the table wrapper
+        table_html = """
+        <div style="border:1px solid #232a3b; border-radius:8px; overflow:hidden;">
+        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem;">
+            <tr style="background-color:#161b27; border-bottom:1px solid #232a3b;">
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Fund Name</th>
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Shares Owned</th>
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">% of Company</th>
+            </tr>
+        """
         
-        # Standardize column names if yfinance changes them
-        if 'Holder' in display_mf.columns and 'Shares' in display_mf.columns:
-            display_mf = display_mf[['Holder', 'Shares']]
-            display_mf['Shares'] = display_mf['Shares'].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "N/A")
+        # Loop through the top 6 funds safely
+        for index, row in mf_df.head(6).iterrows():
+            holder = row.get("Holder", "Unknown Fund")
+            shares = row.get("Shares", 0)
             
-            # Use Streamlit's native dataframe styling for a clean look
-            st.dataframe(
-                display_mf.head(5), # Show top 5 funds
-                use_container_width=True, 
-                hide_index=True,
-            )
+            # Extract percentage safely depending on Yahoo Finance's changing column names
+            pct = 0.0
+            if "pctHeld" in row and pd.notna(row["pctHeld"]): 
+                pct = float(row["pctHeld"])
+            elif "% Out" in row and pd.notna(row["% Out"]): 
+                pct = float(row["% Out"])
+            
+            # Format the numbers for the UI
+            shares_str = f"{shares:,.0f}" if pd.notna(shares) and shares != 0 else "N/A"
+            pct_str = f"{pct*100:.2f}%" if pct > 0 and pct < 1 else f"{pct:.2f}%" if pct > 0 else "N/A"
+            
+            table_html += f"""
+            <tr style="border-bottom:1px solid #1e2535; background-color:rgba(30, 41, 59, 0.2); transition: background-color 0.2s ease;">
+                <td style="padding:12px 16px; color:#e8eaf0; font-weight:500;">{holder}</td>
+                <td style="padding:12px 16px; color:#8a9ab5; font-family:'JetBrains Mono', monospace;">{shares_str}</td>
+                <td style="padding:12px 16px; color:#22c55e; font-weight:600; font-family:'JetBrains Mono', monospace;">{pct_str}</td>
+            </tr>
+            """
+            
+        table_html += "</table></div>"
+        st.markdown(table_html, unsafe_allow_html=True)
 else:
     st.info("ℹ️ Advanced shareholding data (Promoter/Institution breakdown) is not available for this ticker via yfinance.")
 
