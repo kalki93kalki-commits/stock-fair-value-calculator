@@ -1825,10 +1825,26 @@ with c2:
     
     col_g1, col_g2 = st.columns(2)
     with col_g1:
-        mgmt_growth_input = st.number_input("Management Growth Target (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
+        # FIX 1: Explicit static key assigned to lock input stability
+        mgmt_growth_input = st.number_input(
+            "Management Growth Target (%)", 
+            min_value=0.0, 
+            max_value=100.0, 
+            value=15.0, 
+            step=1.0,
+            key="fixed_mgmt_growth_input"
+        )
         mgmt_growth = mgmt_growth_input / 100.0
     with col_g2:
-        mgmt_margin = st.number_input("Management Margin Outlook (%)", min_value=0.0, max_value=100.0, value=18.0, step=1.0)
+        # FIX 2: Explicit static key assigned here as well
+        mgmt_margin = st.number_input(
+            "Management Margin Outlook (%)", 
+            min_value=0.0, 
+            max_value=100.0, 
+            value=18.0, 
+            step=1.0,
+            key="fixed_mgmt_margin_input"
+        )
         
     # Pull the required growth from the Reverse DCF calculation above
     try:
