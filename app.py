@@ -300,39 +300,57 @@ def fmt_crores(value: float, decimals: int = 0) -> str:
 def pct(value: float) -> str:
     return f"{value*100:.1f}%"
 
-# --- NEW: CUSTOM SCREENER.IN SCRAPER ---
+# --- NEW: UPGRADED SCREENER.IN SCRAPER ---
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_shareholding_pattern(ticker):
     """
-    Custom Scraper: Bypasses yfinance to get the last 4 quarters 
-    of shareholding data directly from Screener.in
+    Custom Scraper with stealth headers to bypass bot-blocks.
+    Fetches the last 4 quarters of shareholding data.
     """
     import requests
     import pandas as pd
     
     clean_ticker = ticker.replace(".NS", "").replace(".BO", "")
-    url = f"https://www.screener.in/company/{clean_ticker}/"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    # Check both URL structures just in case
+    urls = [
+        f"https://www.screener.in/company/{clean_ticker}/consolidated/",
+        f"https://www.screener.in/company/{clean_ticker}/"
+    ]
     
-    try:
-        res = requests.get(url, headers=headers, timeout=5)
-        tables = pd.read_html(res.text)
-        
-        for df in tables:
-            # Locate the exact shareholding table by checking the first column
-            if df.iloc[:, 0].astype(str).str.contains('Promoters').any():
-                df.set_index(df.columns[0], inplace=True)
-                df.index.name = "Category"
-                df.dropna(how='all', inplace=True)
+    # Stealth headers to mimic a real human browser
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+    }
+    
+    for url in urls:
+        try:
+            res = requests.get(url, headers=headers, timeout=8)
+            if res.status_code != 200:
+                continue
                 
-                # Return only the last 4 quarters (last 4 columns)
-                if len(df.columns) >= 4:
-                    return df.iloc[:, -4:]
-                else:
-                    return df
-    except:
-        return None
+            tables = pd.read_html(res.text)
+            for df in tables:
+                if df.empty or len(df.columns) < 2:
+                    continue
+                # Identify the correct shareholding table
+                if df.iloc[:, 0].astype(str).str.contains('Promoters').any():
+                    df.set_index(df.columns[0], inplace=True)
+                    df.index.name = "Category"
+                    df.dropna(how='all', inplace=True)
+                    # Return only the last 4 quarters
+                    if len(df.columns) >= 4:
+                        return df.iloc[:, -4:]
+                    else:
+                        return df
+        except Exception:
+            continue
+            
     return None
+# ---------------------------------------
 # ---------------------------------------
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -1664,16 +1682,16 @@ else:
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# 🐋 THE WHALE WATCHER (4-QUARTER SMART MONEY FLOW)
+# 🐋 THE WHALE WATCHER (SMART MONEY FLOW)
 # ─────────────────────────────────────────────
 st.markdown('<div class="section-title">🐋 The Whale Watcher (Smart Money Flow)</div>', unsafe_allow_html=True)
 st.markdown(
     "<small style='color:#7b8cad'>"
-    "Custom Screener.in Scraper deployed: Tracking the exact quarter-by-quarter momentum of Promoters, FIIs, and DIIs (Mutual Funds).</small><br><br>",
+    "Tracking 4-quarter momentum of Promoters & Institutions alongside Top Mutual Fund holdings.</small><br><br>",
     unsafe_allow_html=True
 )
 
-# Run the custom scraper
+# 1. RUN THE SCRAPER FOR 4-QUARTER TREND
 shp_df = fetch_shareholding_pattern(data['ticker'])
 
 if shp_df is not None and not shp_df.empty:
@@ -1681,11 +1699,9 @@ if shp_df is not None and not shp_df.empty:
     latest_q = cols[-1]
     prev_q = cols[-2]
     
-    # Safely extract and calculate momentum
     def get_val(cat):
         try:
-            val = str(shp_df.loc[cat, latest_q]).replace('%', '')
-            return float(val)
+            return float(str(shp_df.loc[cat, latest_q]).replace('%', ''))
         except: return 0.0
             
     def get_diff(cat):
@@ -1718,6 +1734,7 @@ if shp_df is not None and not shp_df.empty:
         elif val < -0.01: return f"<span style='color:#ef4444; font-size:0.75rem; font-weight:700;'>▼ {val:.2f}%</span>"
         else: return f"<span style='color:#5a6a8a; font-size:0.75rem; font-weight:700;'>▬ 0.00%</span>"
 
+    # --- RENDER 3 MAIN CARDS ---
     st.markdown(f"""
 <div style="background:#161b27; border:1px solid #232a3b; border-left:4px solid {sm_color}; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem;">
 <div style="font-size:1.1rem; font-weight:700; color:#ffffff; margin-bottom:0.3rem;">{sm_title}</div>
@@ -1730,51 +1747,96 @@ if shp_df is not None and not shp_df.empty:
 <div style="font-family:'JetBrains Mono', monospace; font-size:1.5rem; font-weight:700; color:#4a9eff; display:flex; align-items:center; gap:0.6rem;">
     {promoter_hold:.2f}% {format_qoq(p_diff)}
 </div>
-<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Founders & Insiders</div>
 </div>
-
 <div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
 <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Foreign Inst. (FII)</div>
 <div style="font-family:'JetBrains Mono', monospace; font-size:1.5rem; font-weight:700; color:#a855f7; display:flex; align-items:center; gap:0.6rem;">
     {fii_hold:.2f}% {format_qoq(f_diff)}
 </div>
-<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Foreign Smart Money</div>
 </div>
-
 <div style="flex:1; min-width:200px; background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem;">
 <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Domestic Inst. (DII)</div>
 <div style="font-family:'JetBrains Mono', monospace; font-size:1.5rem; font-weight:700; color:#059669; display:flex; align-items:center; gap:0.6rem;">
     {dii_hold:.2f}% {format_qoq(d_diff)}
 </div>
-<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">Mutual Funds & LIC</div>
 </div>
 </div>
     """, unsafe_allow_html=True)
     
+    # --- RENDER 4-QUARTER TREND TABLE ---
     st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">📊 Last 4 Quarters Trend</div>', unsafe_allow_html=True)
     
-    table_html = """
-    <div style="border:1px solid #232a3b; border-radius:8px; overflow:hidden;">
-    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem;">
-        <tr style="background-color:#161b27; border-bottom:1px solid #232a3b;">
-            <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">Investor Category</th>
+    table_html = f"""
+    <div style="border:1px solid #232a3b; border-radius:8px; overflow:hidden; margin-bottom:2rem;">
+    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem; background-color:rgba(30, 41, 59, 0.2);">
+        <thead>
+            <tr style="background-color:#161b27; border-bottom:1px solid #232a3b;">
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">Category</th>
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">{cols[0]}</th>
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">{cols[1]}</th>
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">{cols[2]}</th>
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">{cols[3]}</th>
+            </tr>
+        </thead>
+        <tbody>
     """
-    for c in cols: table_html += f'<th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">{c}</th>'
-    table_html += "</tr>"
-    
     for index, row in shp_df.iterrows():
-        table_html += f'<tr style="border-bottom:1px solid #1e2535; background-color:rgba(30, 41, 59, 0.2);">'
+        table_html += f'<tr style="border-bottom:1px solid #1e2535;">'
         table_html += f'<td style="padding:12px 16px; color:#e8eaf0; font-weight:600;">{index}</td>'
         for c in cols:
             val = str(row[c]).replace('%', '')
             table_html += f'<td style="padding:12px 16px; color:#8a9ab5; font-family:\'JetBrains Mono\', monospace;">{val}%</td>'
         table_html += "</tr>"
-        
-    table_html += "</table></div>"
+    table_html += "</tbody></table></div>"
     st.markdown(table_html, unsafe_allow_html=True)
-
 else:
-    st.warning("⚠️ Custom Scraper Failed: Could not extract public shareholding data for this ticker.")
+    st.warning("⚠️ Screener.in bot-protection blocked the 4-quarter historical data request.")
+
+
+# 2. RENDER THE MUTUAL FUND HOLDINGS FROM YFINANCE
+mf_df = data.get("mf_holders")
+
+if mf_df is not None and not mf_df.empty:
+    st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">🏦 Top Mutual Funds Holding This Stock</div>', unsafe_allow_html=True)
+    
+    mf_html = """
+    <div style="border:1px solid #232a3b; border-radius:8px; overflow:hidden; margin-bottom:1rem;">
+    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem; background-color:rgba(30, 41, 59, 0.2);">
+        <thead>
+            <tr style="background-color:#161b27; border-bottom:1px solid #232a3b;">
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">Fund Name</th>
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">Shares Owned</th>
+                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">% of Company</th>
+            </tr>
+        </thead>
+        <tbody>
+    """
+    for index, row in mf_df.head(6).iterrows():
+        holder = str(row.get("Holder", "Unknown Fund"))
+        shares = row.get("Shares", 0)
+        
+        pct = 0.0
+        if "pctHeld" in row and pd.notna(row["pctHeld"]): pct = float(row["pctHeld"])
+        elif "% Out" in row and pd.notna(row["% Out"]): pct = float(row["% Out"])
+        
+        shares_str = f"{shares:,.0f}" if pd.notna(shares) and shares != 0 else "N/A"
+        pct_str = f"{pct*100:.2f}%" if pct > 0 and pct < 1 else f"{pct:.2f}%" if pct > 0 else "N/A"
+        
+        mf_html += f"""
+            <tr style="border-bottom:1px solid #1e2535;">
+                <td style="padding:12px 16px; color:#e8eaf0; font-weight:500;">{holder}</td>
+                <td style="padding:12px 16px; color:#8a9ab5; font-family:'JetBrains Mono', monospace;">{shares_str}</td>
+                <td style="padding:12px 16px; color:#22c55e; font-weight:600; font-family:'JetBrains Mono', monospace;">{pct_str}</td>
+            </tr>
+        """
+    mf_html += """
+        </tbody>
+    </table>
+    </div>
+    """
+    st.markdown(mf_html, unsafe_allow_html=True)
+else:
+    st.info("ℹ️ Specific Mutual Fund breakdown is not available for this ticker via Yahoo Finance.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
