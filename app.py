@@ -357,15 +357,27 @@ import requests_cache
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_stock_data(ticker: str):
     """
-    Fetch fundamentals and maximum price history from yfinance.
-    Returns a dict of core fields or raises on failure.
+    Fetch fundamentals and maximum price history from yfinance safely.
     """
-    t = yf.Ticker(ticker)
+    # 1. Setup the SQLite cache
+    session = requests_cache.CachedSession('yfinance_cache', expire_after=3600)
+    
+    # 2. THE FIX: Disguise the Python bot as a normal Google Chrome web browser
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
+    })
+    
+    # 3. Pass this fully disguised session into yfinance
+    t = yf.Ticker(ticker, session=session)
+    
     info = t.info
 
     # Validate the ticker returned something meaningful
     if not info or info.get("regularMarketPrice") is None:
         raise ValueError(f"No data found for ticker '{ticker}'. Check the symbol and try again.")
+        
 
     # Current share price
     price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
