@@ -300,53 +300,42 @@ def fmt_crores(value: float, decimals: int = 0) -> str:
 def pct(value: float) -> str:
     return f"{value*100:.1f}%"
 
-# --- NEW: UPGRADED SCREENER.IN SCRAPER ---
+# --- NEW: ULTIMATE SCREENER.IN SCRAPER (Cloudflare Bypass) ---
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_shareholding_pattern(ticker):
     """
-    Custom Scraper with stealth headers to bypass bot-blocks.
-    Fetches the last 4 quarters of shareholding data.
+    Custom Scraper using curl_cffi to perfectly spoof Chrome's TLS fingerprint 
+    and bypass advanced Cloudflare/bot-protection.
     """
-    import requests
+    from curl_cffi import requests
     import pandas as pd
+    from io import StringIO
     
     clean_ticker = ticker.replace(".NS", "").replace(".BO", "")
-    # Check both URL structures just in case
     urls = [
         f"https://www.screener.in/company/{clean_ticker}/consolidated/",
         f"https://www.screener.in/company/{clean_ticker}/"
     ]
     
-    # Stealth headers to mimic a real human browser
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-    }
-    
     for url in urls:
         try:
-            res = requests.get(url, headers=headers, timeout=8)
-            if res.status_code != 200:
-                continue
-                
-            tables = pd.read_html(res.text)
-            for df in tables:
-                if df.empty or len(df.columns) < 2:
-                    continue
-                # Identify the correct shareholding table
-                if df.iloc[:, 0].astype(str).str.contains('Promoters').any():
-                    df.set_index(df.columns[0], inplace=True)
-                    df.index.name = "Category"
-                    df.dropna(how='all', inplace=True)
-                    # Return only the last 4 quarters
-                    if len(df.columns) >= 4:
-                        return df.iloc[:, -4:]
-                    else:
-                        return df
-        except Exception:
+            # impersonate="chrome" perfectly mimics a real browser's security footprint
+            res = requests.get(url, impersonate="chrome", timeout=15)
+            if res.status_code == 200:
+                # Wrap in StringIO to ensure Pandas processes the HTML safely
+                tables = pd.read_html(StringIO(res.text))
+                for df in tables:
+                    # Identify the correct shareholding table
+                    if not df.empty and df.iloc[:, 0].astype(str).str.contains('Promoters').any():
+                        df.set_index(df.columns[0], inplace=True)
+                        df.index.name = "Category"
+                        df.dropna(how='all', inplace=True)
+                        # Return only the last 4 quarters
+                        if len(df.columns) >= 4:
+                            return df.iloc[:, -4:]
+                        else:
+                            return df
+        except:
             continue
             
     return None
