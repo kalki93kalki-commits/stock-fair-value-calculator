@@ -1018,67 +1018,71 @@ def build_fii_dii_table():
         "Net Total Inflow (₹ Cr)": net_total
     })
 
+# ──────────────────────────────────────────────────────────────────────────────
+# HOMESCREEN DATA ENGINES (Global Scope for Spacing Safety)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=900, show_spinner=False)
 def build_hidden_gems_table():
-    """Live 1-week momentum scanner running across high-growth assets."""
-    stock_universe = {
-        "KPIL.NS": {"Company": "Kalpataru Projects", "Sector": "Infrastructure"},
-        "CEINFO.NS": {"Company": "MapmyIndia", "Sector": "Software / SaaS"},
-        "MAZDOCK.NS": {"Company": "Mazagon Dock", "Sector": "Defense"},
-        "CDSL.NS": {"Company": "CDSL", "Sector": "Financials"},
-        "TATAELXSI.NS": {"Company": "Tata Elxsi", "Sector": "Engineering R&D"},
-        "JWL.NS": {"Company": "Jupiter Wagons", "Sector": "Railway"},
-        "IRCON.NS": {"Company": "Ircon Intl", "Sector": "Railway"},
-        "SJVN.NS": {"Company": "SJVN Limited", "Sector": "Renewable Power"},
-        "COCHINSHIP.NS": {"Company": "Cochin Shipyard", "Sector": "Defense"},
-        "BSE.NS": {"Company": "BSE Limited", "Sector": "Financials"},
-        "SUZLON.NS": {"Company": "Suzlon Energy", "Sector": "Renewables"},
-        "RVNL.NS": {"Company": "Rail Vikas Nigam", "Sector": "Railway"},
-        "IREDA.NS": {"Company": "IREDA", "Sector": "Energy Financing"},
-        "ZOMATO.NS": {"Company": "Zomato", "Sector": "Consumer Tech"},
-        "HAL.NS": {"Company": "Hindustan Aeronautics", "Sector": "Defense"},
-        "OLECTRA.NS": {"Company": "Olectra Greentech", "Sector": "EV Manufacturing"}
+    """
+    Scans 5,000+ Indian stocks instantly using TradingView's free backend scanner API.
+    Filters out penny stocks and returns the top 10 highest 1-week momentum leaders.
+    """
+    url = "https://scanner.tradingview.com/india/scan"
+    
+    payload = {
+        "filter": [
+            {"left": "exchange", "operation": "equal", "right": "NSE"},
+            {"left": "type", "operation": "equal", "right": "stock"},
+            {"left": "close", "operation": "greater", "right": 50},
+            {"left": "volume", "operation": "greater", "right": 500000}
+        ],
+        "options": {"lang": "en"},
+        "markets": ["india"],
+        "symbols": {"query": {"types": ["stock"]}, "tickers": []},
+        "columns": ["name", "description", "sector", "Perf.W"],
+        "sort": {"sortBy": "Perf.W", "sortOrder": "desc"},
+        "range": [0, 10]
+    }
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Content-Type": "application/json"
     }
     
     try:
-        tickers = list(stock_universe.keys())
-        data = yf.download(tickers, period="1mo", progress=False)
-        if data.empty or 'Close' not in data:
-            return []
-            
-        closes = data['Close']
-        live_list = []
+        response = requests.post(url, json=payload, headers=headers, timeout=5)
+        data = response.json()
         
-        for ticker, meta in stock_universe.items():
-            if ticker in closes.columns:
-                series = closes[ticker].dropna()
-                if len(series) >= 5:
-                    curr = float(series.iloc[-1])
-                    w1 = float(series.iloc[-5]) # Approximately 1 week ago
-                    
-                    ret_1w = ((curr - w1) / w1) * 100
-                    
-                    if ret_1w > 8:
-                        cat = f"🔥 +{ret_1w:.1f}% (1W Breakout)"
-                        badge = "badge-breakout"
-                    elif ret_1w > 3:
-                        cat = f"📈 +{ret_1w:.1f}% (Momentum)"
-                        badge = "badge-growth"
-                    else:
-                        cat = f"⚖️ {ret_1w:.1f}% (Consolidating)"
-                        badge = "badge-deleveraging"
+        live_list = []
+        for item in data.get("data", []):
+            d = item.get("d", [])
+            if len(d) >= 4:
+                ticker = f"{d[0]}.NS"
+                company_name = d[1][:25] + "..." if len(d[1]) > 25 else d[1]
+                sector = d[2] if d[2] else "Equities"
+                perf_w = d[3]
+                
+                if perf_w > 15:
+                    cat = f"🔥 +{perf_w:.1f}% (Massive Breakout)"
+                    badge = "badge-breakout"
+                elif perf_w > 5:
+                    cat = f"📈 +{perf_w:.1f}% (Momentum)"
+                    badge = "badge-growth"
+                else:
+                    cat = f"⚖️ +{perf_w:.1f}% (Consolidating)"
+                    badge = "badge-deleveraging"
 
-                    live_list.append({
-                        "Ticker": ticker,
-                        "Company": meta["Company"],
-                        "Sector": meta["Sector"],
-                        "Piotroski F-Score": "Audited",
-                        "Catalyst": cat,
-                        "BadgeType": badge,
-                        "1W_Ret": ret_1w
-                    })
-                    
-        live_list.sort(key=lambda x: x["1W_Ret"], reverse=True)
-        return live_list[:10] # Pulls exactly the Top 10 performance leaders
+                live_list.append({
+                    "Ticker": ticker,
+                    "Company": company_name.title(),
+                    "Sector": sector,
+                    "Piotroski F-Score": "Live Scan",
+                    "Catalyst": cat,
+                    "BadgeType": badge
+                })
+                
+        return live_list
     except Exception:
         return []
 
