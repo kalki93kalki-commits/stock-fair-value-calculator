@@ -1146,11 +1146,25 @@ with st.sidebar:
     st.markdown("**Fundamental Valuation Analyzer**")
     st.markdown("<small style='color:#4a5570'>All values in ₹ Crore · Indian equities focus</small>", unsafe_allow_html=True)
 
-    # ── Pushed to the absolute bottom ──
+    # ── FORCE TO ABSOLUTE BOTTOM USING CSS POSITIONING ──
     st.markdown("""
+    <style>
+        /* Force the sidebar content container to fill the screen height */
+        [data-testid="stSidebarUserContent"] {
+            position: relative;
+            min-height: 100vh;
+        }
+        /* Staple the About box 2rem from the absolute bottom */
+        .sidebar-bottom {
+            position: absolute;
+            bottom: 2rem;
+            width: calc(100% - 3rem); /* Keeps padding perfectly aligned */
+        }
+    </style>
+    
     <div class="sidebar-bottom">
         <div class="sidebar-section" style="margin-top:0;">About</div>
-        <small style='color:#4a5570;line-height:1.7'>
+        <small style='color:#4a5570;line-height:1.7; display:block;'>
         This model estimates intrinsic value by projecting future revenue, 
         applying a terminal multiple, and discounting back at your desired return.
         <br><br>
