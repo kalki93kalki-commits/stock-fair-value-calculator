@@ -1003,30 +1003,6 @@ def fetch_peer_data(tickers_str):
             pass
     return pd.DataFrame(peer_data)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# HOMESCREEN DATA ENGINES (Global Scope for Spacing Safety)
-# ──────────────────────────────────────────────────────────────────────────────
-
-def build_fii_dii_table():
-    """Generates a dynamic 5-day active trading log up to today."""
-    dates = []
-    current = datetime.now()
-    while len(dates) < 5:
-        if current.weekday() < 5: # Monday to Friday only
-            dates.append(current.strftime("%d %b %Y"))
-        current -= timedelta(days=1)
-        
-    np.random.seed(int(datetime.now().strftime("%y%m%d")))
-    fii_net = np.random.randint(-1500, 2500, size=5)
-    dii_net = np.random.randint(500, 3000, size=5)
-    net_total = fii_net + dii_net
-    
-    return pd.DataFrame({
-        "Trading Date": dates,
-        "FII Net Inflow (₹ Cr)": fii_net,
-        "DII Net Inflow (₹ Cr)": dii_net,
-        "Net Total Inflow (₹ Cr)": net_total
-    })
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HOMESCREEN DATA ENGINES (Global Scope for Spacing Safety)
