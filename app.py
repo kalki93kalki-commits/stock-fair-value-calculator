@@ -1551,22 +1551,33 @@ st.markdown('<div class="section-title">🩺 Company Health Snapshot</div>', uns
 
 info = data.get("info", {})
 
-# Safely extract metrics
+# 1. P/E Ratio
 pe_ratio = info.get("trailingPE") or info.get("forwardPE")
 pe_str = f"{pe_ratio:.1f}x" if pe_ratio is not None else "N/A"
 
+# 2. Net Margin
 profit_margin = info.get("profitMargins")
 margin_str = f"{profit_margin * 100:.1f}%" if profit_margin is not None else "N/A"
 
+# 3. ROE
 roe = info.get("returnOnEquity")
 roe_str = f"{roe * 100:.1f}%" if roe is not None else "N/A"
 
-div_yield = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
-if div_yield is not None:
-    div_str = f"{div_yield:.2f}%" if div_yield > 1 else f"{div_yield * 100:.2f}%"
+# 4. TRUE Dividend Yield (Manual Calculation to bypass YF API glitches)
+div_rate = info.get("trailingAnnualDividendRate") or info.get("dividendRate") or 0.0
+current_price = info.get("currentPrice") or info.get("previousClose") or 0.0
+
+if current_price > 0 and div_rate > 0:
+    true_div_yield = (div_rate / current_price) * 100
+    # Safety Cap: Protects against one-time massive special dividends or buybacks
+    if true_div_yield > 25:
+        div_str = "Anomaly (Check Filings)"
+    else:
+        div_str = f"{true_div_yield:.2f}%"
 else:
     div_str = "0.00%"
 
+# 5. Debt to Equity
 debt_to_equity = info.get("debtToEquity")
 d_e_str = f"{debt_to_equity / 100:.2f}x" if debt_to_equity is not None else "N/A"
 
@@ -1587,7 +1598,6 @@ with h5:
       <div class="mc-value" style="color:{'#ef4444' if debt_to_equity and debt_to_equity > 100 else '#22c55e'}">{d_e_str}</div>
       <div class="mc-sub">Safety check</div>
     </div>""", unsafe_allow_html=True)
-
 
 # ── 4. Editable Data Fields ───────────────────────────────────────────────────
 st.markdown('<div class="section-title">📥 Auto-Filled Data (editable)</div>', unsafe_allow_html=True)
