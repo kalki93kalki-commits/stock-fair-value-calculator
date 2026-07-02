@@ -2107,15 +2107,19 @@ if shp_df is not None and not shp_df.empty:
     latest_q = cols[-1]
     prev_q = cols[-2]
     
+    # --- FIX 1: Smarter extraction that ignores the "+" symbol from Screener ---
     def get_val(cat):
         try:
-            return float(str(shp_df.loc[cat, latest_q]).replace('%', ''))
+            # Finds the row even if it has a "+" or extra spaces
+            row_name = [idx for idx in shp_df.index if cat.lower() in str(idx).lower()][0]
+            return float(str(shp_df.loc[row_name, latest_q]).replace('%', '').replace(',', '').strip())
         except: return 0.0
             
     def get_diff(cat):
         try:
-            v1 = float(str(shp_df.loc[cat, latest_q]).replace('%', ''))
-            v2 = float(str(shp_df.loc[cat, prev_q]).replace('%', ''))
+            row_name = [idx for idx in shp_df.index if cat.lower() in str(idx).lower()][0]
+            v1 = float(str(shp_df.loc[row_name, latest_q]).replace('%', '').replace(',', '').strip())
+            v2 = float(str(shp_df.loc[row_name, prev_q]).replace('%', '').replace(',', '').strip())
             return v1 - v2
         except: return 0.0
 
@@ -2188,13 +2192,24 @@ if shp_df is not None and not shp_df.empty:
         </thead>
         <tbody>
     """
+    
     for index, row in shp_df.iterrows():
+        # Clean the row title by removing the '+' symbol from the UI labels
+        clean_idx = str(index).replace('+', '').strip()
+        
         table_html += f'<tr style="border-bottom:1px solid #1e2535;">'
-        table_html += f'<td style="padding:12px 16px; color:#e8eaf0; font-weight:600;">{index}</td>'
+        table_html += f'<td style="padding:12px 16px; color:#e8eaf0; font-weight:600;">{clean_idx}</td>'
+        
         for c in cols:
-            val = str(row[c]).replace('%', '')
-            table_html += f'<td style="padding:12px 16px; color:#8a9ab5; font-family:\'JetBrains Mono\', monospace;">{val}%</td>'
+            val = str(row[c]).replace('%', '').strip()
+            
+            # --- FIX 2: Check if it's the shareholders row to block the % sign ---
+            if "shareholders" in clean_idx.lower():
+                table_html += f'<td style="padding:12px 16px; color:#8a9ab5; font-family:\'JetBrains Mono\', monospace;">{val}</td>'
+            else:
+                table_html += f'<td style="padding:12px 16px; color:#8a9ab5; font-family:\'JetBrains Mono\', monospace;">{val}%</td>'
         table_html += "</tr>"
+        
     table_html += "</tbody></table></div>"
     st.markdown(table_html, unsafe_allow_html=True)
 else:
@@ -2247,6 +2262,7 @@ else:
     st.info("ℹ️ Specific Mutual Fund breakdown is not available for this ticker via Yahoo Finance.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
+
 
 # ─────────────────────────────────────────────
 # LIVE MARKET INTELLIGENCE (RECENT NEWS)
