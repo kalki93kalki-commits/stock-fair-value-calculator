@@ -1143,6 +1143,153 @@ with st.sidebar:
     Always do your own research.
     </small>
     """, unsafe_allow_html=True)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HOMESCREEN: MARKET DASHBOARD & INSIGHTS
+# ──────────────────────────────────────────────────────────────────────────────
+if st.session_state.current_page == "◬ Market Dashboard & Insights":
+    
+    # 1. Aesthetic Header
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.2rem;">
+        <span style="font-size: 2.5rem; color: #10b981; line-height: 1;">◬</span>
+        <h1 style="margin: 0; font-size: 2.6rem; font-weight: 800; letter-spacing: -0.03em; color: #ffffff;">Tattva Insights</h1>
+    </div>
+    <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 2.5rem; letter-spacing: 0.01em;">
+        The core reality of equity valuation: unmasking institutional money flows and structural data layers.
+    </p>
+    """, unsafe_allow_html=True)
+    
+    # 2. Live Index Overview (Including VIX)
+    st.subheader("📊 Today's Index Overview")
+    index_cols = st.columns(3)
+    indices = {"Nifty 50": "^NSEI", "BSE Sensex": "^BSESN", "India VIX": "^INDIAVIX"}
+    
+    for i, (name, symbol) in enumerate(indices.items()):
+        with index_cols[i]:
+            ticker = get_safe_ticker(symbol)
+            if ticker:
+                try:
+                    hist = ticker.history(period="5d")
+                    if not hist.empty:
+                        current_price = hist['Close'].iloc[-1]
+                        prev_price = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
+                        day_change = current_price - prev_price
+                        pct_change = (day_change / prev_price) * 100
+                        high = hist['High'].iloc[-1]
+                        low = hist['Low'].iloc[-1]
+                        
+                        sign = "+" if day_change >= 0 else ""
+                        color_class = "change-up" if day_change >= 0 else "change-down"
+                        
+                        # Formatting: VIX uses points, Nifty/Sensex use Rupees
+                        prefix = "" if symbol == "^INDIAVIX" else "₹"
+                        suffix = " pts" if symbol == "^INDIAVIX" else ""
+                        
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-title">{name} ({symbol})</div>
+                            <div class="metric-value">{prefix}{current_price:,.2f}{suffix}</div>
+                            <div class="metric-change {color_class}">
+                                {sign}{day_change:,.2f} ({sign}{pct_change:.2f}%)
+                            </div>
+                            <div style="font-size:0.75rem; color:#64748b; margin-top:0.4rem;">
+                                High: {prefix}{high:,.2f} | Low: {prefix}{low:,.2f}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.warning("Data unavailable")
+                except Exception:
+                    st.warning("Error loading index")
+                    
+    st.markdown("<hr style='border-color: #1e293b; margin: 2rem 0;' />", unsafe_allow_html=True)
+    
+    # 3. FII / DII Flow Tracker
+    st.subheader("🐋 FII / DII Flow Tracker")
+    st.markdown("<small style='color:#7b8cad'>Tracks net institutional buying and selling across the last 5 active trading sessions.</small>", unsafe_allow_html=True)
+    
+    flow_data = build_fii_dii_table()
+    if not flow_data.empty:
+        styled_rows = ""
+        for idx, row in flow_data.iterrows():
+            fii_val = row["FII Net Inflow (₹ Cr)"]
+            dii_val = row["DII Net Inflow (₹ Cr)"]
+            total_val = row["Net Total Inflow (₹ Cr)"]
+            
+            fii_color = "#10b981" if fii_val > 0 else "#ef4444"
+            dii_color = "#10b981" if dii_val > 0 else "#ef4444"
+            total_color = "#10b981" if total_val > 0 else "#ef4444"
+            
+            fii_prefix = "+" if fii_val > 0 else ""
+            dii_prefix = "+" if dii_val > 0 else ""
+            total_prefix = "+" if total_val > 0 else ""
+            
+            styled_rows += f"""<tr>
+<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-weight:600;">{row['Trading Date']}</td>
+<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{fii_color};">{fii_prefix}{fii_val:,.0f} Cr</td>
+<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{dii_color};">{dii_prefix}{dii_val:,.0f} Cr</td>
+<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{total_color}; font-weight:700;">{total_prefix}{total_val:,.0f} Cr</td>
+</tr>"""
+            
+        st.markdown(f"""
+        <div style="border: 1px solid #232d3f; border-radius: 8px; overflow: hidden; background: #11141d;">
+            <table class="custom-table" style="margin-top:0;">
+                <thead>
+                    <tr>
+                        <th>Trading Date</th>
+                        <th>FII Net Purchases (₹ Cr)</th>
+                        <th>DII Net Purchases (₹ Cr)</th>
+                        <th>Combined Inflow (₹ Cr)</th>
+                    </tr>
+                </thead>
+                <tbody>{styled_rows}</tbody>
+            </table>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.markdown("<hr style='border-color: #1e293b; margin: 2rem 0;' />", unsafe_allow_html=True)
+
+    # 4. Hidden Gems (1-Week Momentum Scanner)
+    st.markdown("""
+    <div style="margin-top: 2rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="color: #10b981; font-size: 1.2rem;">◬</span>
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: #f8fafc;">
+                Hidden Gems
+            </h3>
+        </div>
+        <p style="color: #64748b; font-size: 0.82rem; margin-top: 0.4rem; letter-spacing: 0.02em;">
+            Fundamentally supercharged companies compounding quietly before the broader market identifies them.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.spinner("Compiling live 1-week momentum data..."):
+        gems = build_hidden_gems_table()
+        if gems:
+            for g in gems:
+                col_g_details, col_g_action = st.columns([5, 1])
+                with col_g_details:
+                    st.markdown(f"""
+                    <div style="background: #161b27; border: 1px solid #232d3f; border-radius: 6px; padding: 0.8rem 1.2rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <div>
+                            <span style="font-weight: 700; font-size: 1rem; color: #f8fafc;">{g['Company']}</span> 
+                            <code style="color: #4a9eff; margin-left: 0.5rem;">{g['Ticker']}</code>
+                            <span style="color: #64748b; margin-left: 1rem; font-size: 0.8rem;">{g['Sector']}</span>
+                        </div>
+                        <div><span class="{g['BadgeType']}">{g['Catalyst']}</span></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col_g_action:
+                    if st.button(f"Analyze", key=f"btn_{g['Ticker']}", use_container_width=True):
+                        navigate_to_analyzer(g['Ticker'])
+        else:
+            st.info("Gathering live momentum data... Market API may be resting.")
+            
+    # MAGIC FIX: Stop rendering the rest of the page so we don't have to indent your original code!
+    st.stop()
+    
     
 # ─────────────────────────────────────────────
 # MAIN CONTENT
