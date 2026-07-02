@@ -2226,53 +2226,66 @@ else:
     st.warning("⚠️ Screener.in bot-protection blocked the 4-quarter historical data request.")
 
 
-# 2. RENDER THE MUTUAL FUND HOLDINGS FROM YFINANCE
-mf_df = data.get("mf_holders")
+# 2. WHALE FOOTPRINT RADAR (Institutional Volume Analysis)
+st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">🐋 Institutional Footprint (Volume Surge)</div>', unsafe_allow_html=True)
 
-if mf_df is not None and not mf_df.empty:
-    st.markdown('<div style="font-size:0.8rem; font-weight:600; color:#e8eaf0; margin-bottom:0.8rem; text-transform:uppercase; letter-spacing:0.05em;">🏦 Top Mutual Funds Holding This Stock</div>', unsafe_allow_html=True)
+hist = data.get("history")
+if hist is not None and len(hist) > 30:
+    latest_vol = hist["Volume"].iloc[-1]
+    avg_vol_30 = hist["Volume"].tail(30).mean()
     
-    mf_html = """
-    <div style="border:1px solid #232a3b; border-radius:8px; overflow:hidden; margin-bottom:1rem;">
-    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem; background-color:rgba(30, 41, 59, 0.2);">
-        <thead>
-            <tr style="background-color:#161b27; border-bottom:1px solid #232a3b;">
-                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">Fund Name</th>
-                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">Shares Owned</th>
-                <th style="padding:12px 16px; color:#7b8cad; font-weight:600; text-transform:uppercase; font-size:0.7rem;">% of Company</th>
-            </tr>
-        </thead>
-        <tbody>
-    """
-    for index, row in mf_df.head(6).iterrows():
-        holder = str(row.get("Holder", "Unknown Fund"))
-        shares = row.get("Shares", 0)
+    # Avoid division by zero
+    surge_multiplier = latest_vol / avg_vol_30 if avg_vol_30 > 0 else 1.0
         
-        pct = 0.0
-        if "pctHeld" in row and pd.notna(row["pctHeld"]): pct = float(row["pctHeld"])
-        elif "% Out" in row and pd.notna(row["% Out"]): pct = float(row["% Out"])
+    latest_close = hist["Close"].iloc[-1]
+    prev_close = hist["Close"].iloc[-2]
+    price_change = latest_close - prev_close
+    
+    # Institutional Footprint Logic
+    if surge_multiplier > 2.5 and price_change > 0:
+        vol_color, vol_status, vol_desc = "#22c55e", "🟢 Aggressive Whale Accumulation", "Massive buying volume detected. Institutions are heavily loading up on this stock."
+    elif surge_multiplier > 2.5 and price_change <= 0:
+        vol_color, vol_status, vol_desc = "#ef4444", "🔴 Aggressive Whale Distribution", "Massive selling volume detected. Institutions are quietly or actively offloading this stock."
+    elif surge_multiplier > 1.5:
+        vol_color, vol_status, vol_desc = "#f59e0b", "🟡 Elevated Institutional Activity", "Trading volume is noticeably higher than average. Smart money is actively positioning."
+    else:
+        vol_color, vol_status, vol_desc = "#8a9ab5", "⚪ Normal / Retail Trading", "Volume is within normal ranges. No major institutional footprints detected today."
+
+    def format_vol(v):
+        if v >= 1e7: return f"{v/1e7:.2f} Cr"
+        elif v >= 1e5: return f"{v/1e5:.2f} L"
+        else: return f"{v:,.0f}"
+
+    st.markdown(f"""
+    <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-left:4px solid {vol_color}; border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+            <div style="flex:2; min-width:250px;">
+                <div style="font-size:1.05rem; font-weight:700; color:#e8eaf0; margin-bottom:0.3rem;">{vol_status}</div>
+                <div style="font-size:0.8rem; color:#8a9ab5; line-height:1.5;">{vol_desc}</div>
+            </div>
+            <div style="flex:1; min-width:120px; border-left:1px solid #232a3b; padding-left:1.5rem;">
+                <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Volume Surge</div>
+                <div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:{vol_color};">{surge_multiplier:.1f}x</div>
+                <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">vs 30-Day Average</div>
+            </div>
+        </div>
         
-        shares_str = f"{shares:,.0f}" if pd.notna(shares) and shares != 0 else "N/A"
-        pct_str = f"{pct*100:.2f}%" if pct > 0 and pct < 1 else f"{pct:.2f}%" if pct > 0 else "N/A"
-        
-        mf_html += f"""
-            <tr style="border-bottom:1px solid #1e2535;">
-                <td style="padding:12px 16px; color:#e8eaf0; font-weight:500;">{holder}</td>
-                <td style="padding:12px 16px; color:#8a9ab5; font-family:'JetBrains Mono', monospace;">{shares_str}</td>
-                <td style="padding:12px 16px; color:#22c55e; font-weight:600; font-family:'JetBrains Mono', monospace;">{pct_str}</td>
-            </tr>
-        """
-    mf_html += """
-        </tbody>
-    </table>
+        <div style="display:flex; gap:2rem; margin-top:1.5rem; padding-top:1.2rem; border-top:1px solid #232a3b;">
+            <div>
+                <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">Latest Volume</div>
+                <div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:#e8eaf0;">{format_vol(latest_vol)} <span style="font-size:0.75rem; color:#5a6a8a;">shares</span></div>
+            </div>
+            <div>
+                <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">30-Day Average</div>
+                <div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:#e8eaf0;">{format_vol(avg_vol_30)} <span style="font-size:0.75rem; color:#5a6a8a;">shares</span></div>
+            </div>
+        </div>
     </div>
-    """
-    st.markdown(mf_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 else:
-    st.info("ℹ️ Specific Mutual Fund breakdown is not available for this ticker via Yahoo Finance.")
+    st.info("ℹ️ Not enough historical trading volume data to analyze institutional footprints.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
-
 
 # ─────────────────────────────────────────────
 # LIVE MARKET INTELLIGENCE (RECENT NEWS)
