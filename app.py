@@ -14,6 +14,29 @@ import requests
 from datetime import datetime, timedelta
 
 # ─────────────────────────────────────────────
+# SYSTEM & SESSION CONFIGURATION
+# ─────────────────────────────────────────────
+# Setup a standard session to prevent yfinance blocking
+safe_session = requests.Session()
+
+# Realistic browser User-Agent to avoid scraping blocks
+BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+}
+safe_session.headers.update(BROWSER_HEADERS)
+
+def get_safe_ticker(ticker_symbol):
+    """Helper function to get a Ticker safely with our standard session"""
+    try:
+        ticker = yf.Ticker(ticker_symbol, session=safe_session)
+        return ticker
+    except Exception as e:
+        st.warning(f"⚠️ Failed to initialize ticker {ticker_symbol}: {str(e)}")
+        return None
+
+# ─────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────
 st.set_page_config(
