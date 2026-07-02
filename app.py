@@ -1228,12 +1228,11 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 except Exception:
                     st.warning("Error loading index")
                     
-   # 3. LIVE MACRO PULSE (Real-time Market Drivers)
+  # 3. LIVE MACRO PULSE (Real-time Market Drivers)
     st.subheader("⚡ Live Macro Pulse: Today's Market Drivers")
     
     with st.spinner("Streaming real-time market intelligence..."):
         try:
-            # Pull live global headlines tied directly to the Nifty 50 Index
             nifty_macro = get_safe_ticker("^NSEI")
             market_news = nifty_macro.news if nifty_macro else []
         except Exception:
@@ -1244,7 +1243,7 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
             valid_count = 0
             
             for item in market_news:
-                if valid_count >= 3: # Display the top 3 critical macro events
+                if valid_count >= 3:
                     break
                     
                 title = item.get("title") or item.get("content", {}).get("title", "")
@@ -1254,35 +1253,37 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 if not title:
                     continue
                     
-                # Live algorithmic keyword sentiment check
+                timestamp = item.get("providerPublishTime")
+                if timestamp:
+                    try:
+                        dt = datetime.fromtimestamp(timestamp)
+                        time_str = dt.strftime("%d %b %Y")
+                    except Exception:
+                        time_str = "Recent"
+                else:
+                    time_str = "Recent"
+                    
                 tl = title.lower()
                 if any(w in tl for w in ['surge', 'jump', 'gain', 'buy', 'up', 'high', 'bull', 'soar', 'beat', 'profit', 'rally']):
                     badge = "<span style='background:rgba(34,197,94,0.1); color:#10b981; border:1px solid rgba(34,197,94,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Positive Tone</span>"
                 elif any(w in tl for w in ['drop', 'fall', 'plunge', 'sell', 'down', 'low', 'bear', 'crash', 'miss', 'loss', 'worry']):
                     badge = "<span style='background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Negative Tone</span>"
                 else:
-                    badge = "<span style='background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Neutral</span>"
+                    badge = "<span style='background:rgba(148,163,184,0.1); color:#8a9ab5; border:1px solid rgba(90,106,138,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Neutral / Factual</span>"
+                    
+                title_safe = title.replace('"', '&quot;').replace("'", "&#39;")
                 
-               title_safe = title.replace('"', '&quot;').replace("'", "&#39;")
-                
-                # FIX: Pack everything tightly into a single continuous line to kill the markdown indentation bug
-                card_html = f'<a href="{link}" target="_blank" style="text-decoration:none; color:inherit;"><div style="background:#11141d; padding:1.2rem; border-radius:6px; border:1px solid #232d3f; height:100%; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"><div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.8rem;"><span style="font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">{publisher}</span>{badge}</div><div style="font-size:0.85rem; color:#cbd5e1; line-height:1.6; font-weight:600;">{title_safe}</div></div></a>'
-                
-                news_html += card_html
-                valid_count += 1
-                
-            news_html += '</div>'
-            st.markdown(news_html, unsafe_allow_html=True)
-                <a href="{link}" target="_blank" style="text-decoration:none; color:inherit;">
-                    <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border: 1px solid #232d3f; height: 100%; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.8rem;">
-                            <span style="font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">{publisher}</span>
-                            {badge}
-                        </div>
-                        <div style="font-size:0.85rem; color:#cbd5e1; line-height:1.6; font-weight:600;">{title_safe}</div>
-                    </div>
-                </a>
-                """
+                styled_rows_news = f"""<a href="{link}" target="_blank" style="text-decoration:none; color:inherit;">
+<div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-radius:8px; padding:1.2rem; height:100%;">
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.8rem;">
+<span style="font-size:0.7rem; color:#8a9ab5; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">{publisher}</span>
+{badge}
+</div>
+<div style="font-size:0.85rem; color:#cbd5e1; line-height:1.6; font-weight:600;">{title_safe}</div>
+<div style="font-size:0.7rem; color:#5a6a8a; font-family:'JetBrains Mono', monospace; margin-top:0.8rem;">🕒 {time_str}</div>
+</div>
+</a>"""
+                news_html += styled_rows_news
                 valid_count += 1
                 
             news_html += '</div>'
