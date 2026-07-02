@@ -2256,37 +2256,37 @@ if hist is not None and len(hist) > 30:
         elif v >= 1e5: return f"{v/1e5:.2f} L"
         else: return f"{v:,.0f}"
 
-    st.markdown(f"""
-    <div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-left:4px solid {vol_color}; border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
-        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
-            <div style="flex:2; min-width:250px;">
-                <div style="font-size:1.05rem; font-weight:700; color:#e8eaf0; margin-bottom:0.3rem;">{vol_status}</div>
-                <div style="font-size:0.8rem; color:#8a9ab5; line-height:1.5;">{vol_desc}</div>
-            </div>
-            <div style="flex:1; min-width:120px; border-left:1px solid #232a3b; padding-left:1.5rem;">
-                <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Volume Surge</div>
-                <div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:{vol_color};">{surge_multiplier:.1f}x</div>
-                <div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">vs 30-Day Average</div>
-            </div>
-        </div>
-        
-        <div style="display:flex; gap:2rem; margin-top:1.5rem; padding-top:1.2rem; border-top:1px solid #232a3b;">
-            <div>
-                <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">Latest Volume</div>
-                <div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:#e8eaf0;">{format_vol(latest_vol)} <span style="font-size:0.75rem; color:#5a6a8a;">shares</span></div>
-            </div>
-            <div>
-                <div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">30-Day Average</div>
-                <div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:#e8eaf0;">{format_vol(avg_vol_30)} <span style="font-size:0.75rem; color:#5a6a8a;">shares</span></div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # ── THE FIX: Flush completely left to bypass markdown's code block parser ──
+    styled_html = f"""
+<div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-left:4px solid {vol_color}; border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
+<div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+<div style="flex:2; min-width:250px;">
+<div style="font-size:1.05rem; font-weight:700; color:#e8eaf0; margin-bottom:0.3rem;">{vol_status}</div>
+<div style="font-size:0.8rem; color:#8a9ab5; line-height:1.5;">{vol_desc}</div>
+</div>
+<div style="flex:1; min-width:120px; border-left:1px solid #232a3b; padding-left:1.5rem;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">Volume Surge</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:{vol_color};">{surge_multiplier:.1f}x</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">vs 30-Day Average</div>
+</div>
+</div>
+<div style="display:flex; gap:2rem; margin-top:1.5rem; padding-top:1.2rem; border-top:1px solid #232a3b;">
+<div>
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">Latest Volume</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:#e8eaf0;">{format_vol(latest_vol)} <span style="font-size:0.75rem; color:#5a6a8a;">shares</span></div>
+</div>
+<div>
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">30-Day Average</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:#e8eaf0;">{format_vol(avg_vol_30)} <span style="font-size:0.75rem; color:#5a6a8a;">shares</span></div>
+</div>
+</div>
+</div>
+"""
+    st.markdown(styled_html, unsafe_allow_html=True)
 else:
     st.info("ℹ️ Not enough historical trading volume data to analyze institutional footprints.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
-
 # ─────────────────────────────────────────────
 # LIVE MARKET INTELLIGENCE (RECENT NEWS)
 # ─────────────────────────────────────────────
