@@ -1228,31 +1228,61 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 except Exception:
                     st.warning("Error loading index")
                     
-    # 3. LIVE MACRO PULSE (Real-time Market Drivers)
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(59, 130, 246, 0.04) 100%); border: 1px solid #1e293b; border-radius: 8px; padding: 1.5rem; margin-top: 1rem; margin-bottom: 2.5rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem;">
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 0.5rem;">
-                <span style="color: #4a9eff;">⚡</span> Live Macro Pulse: Today's Market Drivers
-            </h3>
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #10b981; border: 1px solid #10b981; padding: 2px 8px; border-radius: 4px; font-weight: 600;">Bullish Bias</span>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-            <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border-left: 3px solid #10b981; border-top: 1px solid #1e293b; border-right: 1px solid #1e293b; border-bottom: 1px solid #1e293b;">
-                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.4rem; letter-spacing: 0.05em;">Sector Rotation: IT Rebound</div>
-                <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6;">The Nifty IT index surged over 3.5%, snapping a 4-day losing streak. Global capital is aggressively rotating out of overvalued AI hardware stocks and hunting for value in large-cap Indian tech services.</div>
-            </div>
-            <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border-left: 3px solid #3b82f6; border-top: 1px solid #1e293b; border-right: 1px solid #1e293b; border-bottom: 1px solid #1e293b;">
-                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.4rem; letter-spacing: 0.05em;">Crude Oil Easing</div>
-                <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6;">Brent crude slipped below $71 a barrel following progress in US-Iran Doha talks. This massively strengthens India's macroeconomic outlook by reducing the import bill and cooling domestic inflation fears.</div>
-            </div>
-            <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border-left: 3px solid #a855f7; border-top: 1px solid #1e293b; border-right: 1px solid #1e293b; border-bottom: 1px solid #1e293b;">
-                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.4rem; letter-spacing: 0.05em;">Volatility Contraction</div>
-                <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6;">India VIX dropped nearly 3%, indicating that retail and institutional panic is fading. Robust monthly auto sales data (June) has further cemented confidence in underlying domestic consumption.</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+   # 3. LIVE MACRO PULSE (Real-time Market Drivers)
+    st.subheader("⚡ Live Macro Pulse: Today's Market Drivers")
+    
+    with st.spinner("Streaming real-time market intelligence..."):
+        try:
+            # Pull live global headlines tied directly to the Nifty 50 Index
+            nifty_macro = get_safe_ticker("^NSEI")
+            market_news = nifty_macro.news if nifty_macro else []
+        except Exception:
+            market_news = []
+            
+        if market_news:
+            news_html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2.5rem;">'
+            valid_count = 0
+            
+            for item in market_news:
+                if valid_count >= 3: # Display the top 3 critical macro events
+                    break
+                    
+                title = item.get("title") or item.get("content", {}).get("title", "")
+                publisher = item.get("publisher") or item.get("content", {}).get("provider", {}).get("displayName", "Unknown")
+                link = item.get("link") or item.get("content", {}).get("clickThroughUrl", {}).get("url", "#")
+                
+                if not title:
+                    continue
+                    
+                # Live algorithmic keyword sentiment check
+                tl = title.lower()
+                if any(w in tl for w in ['surge', 'jump', 'gain', 'buy', 'up', 'high', 'bull', 'soar', 'beat', 'profit', 'rally']):
+                    badge = "<span style='background:rgba(34,197,94,0.1); color:#10b981; border:1px solid rgba(34,197,94,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Positive Tone</span>"
+                elif any(w in tl for w in ['drop', 'fall', 'plunge', 'sell', 'down', 'low', 'bear', 'crash', 'miss', 'loss', 'worry']):
+                    badge = "<span style='background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Negative Tone</span>"
+                else:
+                    badge = "<span style='background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Neutral</span>"
+                
+                title_safe = title.replace('"', '&quot;').replace("'", "&#39;")
+                
+                # Render beautifully styled premium terminal boxes
+                news_html += f"""
+                <a href="{link}" target="_blank" style="text-decoration:none; color:inherit;">
+                    <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border: 1px solid #232d3f; height: 100%; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.8rem;">
+                            <span style="font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">{publisher}</span>
+                            {badge}
+                        </div>
+                        <div style="font-size:0.85rem; color:#cbd5e1; line-height:1.6; font-weight:600;">{title_safe}</div>
+                    </div>
+                </a>
+                """
+                valid_count += 1
+                
+            news_html += '</div>'
+            st.markdown(news_html, unsafe_allow_html=True)
+        else:
+            st.info("ℹ️ No live macro headlines found at this hour. Displaying standard structural trends.")
     
     # 4. FII / DII Flow Tracker
     st.subheader("🐋 FII / DII Flow Tracker")
