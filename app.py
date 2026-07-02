@@ -1259,7 +1259,7 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
     </div>
     """, unsafe_allow_html=True)
     
-@st.cache_data(ttl=300, show_spinner=False)
+    @st.cache_data(ttl=300, show_spinner=False)
     def get_heatmap_data():
         import requests
         
@@ -1354,7 +1354,7 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
 </div>
 """
             h_html += '</div>'
-            st.markdown(h_html, unsafe_allow_html=True)                    
+            st.markdown(h_html, unsafe_allow_html=True)        
   # 3. LIVE MACRO PULSE (Real-time Market Drivers)
     st.subheader("⚡ Live Macro Pulse: Today's Market Drivers")
     
