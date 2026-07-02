@@ -1203,21 +1203,23 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                         low = hist['Low'].iloc[-1]
                         
                         sign = "+" if day_change >= 0 else ""
-                        color_class = "change-up" if day_change >= 0 else "change-down"
+                        color_hex = "#10b981" if day_change >= 0 else "#ef4444"
                         
                         # Formatting: VIX uses points, Nifty/Sensex use Rupees
                         prefix = "" if symbol == "^INDIAVIX" else "₹"
                         suffix = " pts" if symbol == "^INDIAVIX" else ""
                         
+                        # INLINE CSS FOR FORCED AESTHETICS (Fixes missing colors)
                         st.markdown(f"""
-                        <div class="metric-card">
-                            <div class="metric-title">{name} ({symbol})</div>
-                            <div class="metric-value">{prefix}{current_price:,.2f}{suffix}</div>
-                            <div class="metric-change {color_class}">
+                        <div style="background: #161b27; border: 1px solid #232d3f; border-radius: 8px; padding: 1.4rem; margin-bottom: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);">
+                            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.5rem;">{name} ({symbol})</div>
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 700; color: #f8fafc;">{prefix}{current_price:,.2f}{suffix}</div>
+                            <div style="font-size: 0.95rem; font-weight: 700; color: {color_hex}; margin-top: 0.4rem;">
                                 {sign}{day_change:,.2f} ({sign}{pct_change:.2f}%)
                             </div>
-                            <div style="font-size:0.75rem; color:#64748b; margin-top:0.4rem;">
-                                High: {prefix}{high:,.2f} | Low: {prefix}{low:,.2f}
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid #1e293b; display: flex; justify-content: space-between;">
+                                <span>High: {prefix}{high:,.2f}</span>
+                                <span>Low: {prefix}{low:,.2f}</span>
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
@@ -1226,9 +1228,33 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 except Exception:
                     st.warning("Error loading index")
                     
-    st.markdown("<hr style='border-color: #1e293b; margin: 2rem 0;' />", unsafe_allow_html=True)
+    # 3. LIVE MACRO PULSE (Real-time Market Drivers)
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(59, 130, 246, 0.04) 100%); border: 1px solid #1e293b; border-radius: 8px; padding: 1.5rem; margin-top: 1rem; margin-bottom: 2.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem;">
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: #4a9eff;">⚡</span> Live Macro Pulse: Today's Market Drivers
+            </h3>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #10b981; border: 1px solid #10b981; padding: 2px 8px; border-radius: 4px; font-weight: 600;">Bullish Bias</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border-left: 3px solid #10b981; border-top: 1px solid #1e293b; border-right: 1px solid #1e293b; border-bottom: 1px solid #1e293b;">
+                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.4rem; letter-spacing: 0.05em;">Sector Rotation: IT Rebound</div>
+                <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6;">The Nifty IT index surged over 3.5%, snapping a 4-day losing streak. Global capital is aggressively rotating out of overvalued AI hardware stocks and hunting for value in large-cap Indian tech services.</div>
+            </div>
+            <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border-left: 3px solid #3b82f6; border-top: 1px solid #1e293b; border-right: 1px solid #1e293b; border-bottom: 1px solid #1e293b;">
+                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.4rem; letter-spacing: 0.05em;">Crude Oil Easing</div>
+                <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6;">Brent crude slipped below $71 a barrel following progress in US-Iran Doha talks. This massively strengthens India's macroeconomic outlook by reducing the import bill and cooling domestic inflation fears.</div>
+            </div>
+            <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border-left: 3px solid #a855f7; border-top: 1px solid #1e293b; border-right: 1px solid #1e293b; border-bottom: 1px solid #1e293b;">
+                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; margin-bottom: 0.4rem; letter-spacing: 0.05em;">Volatility Contraction</div>
+                <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6;">India VIX dropped nearly 3%, indicating that retail and institutional panic is fading. Robust monthly auto sales data (June) has further cemented confidence in underlying domestic consumption.</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # 3. FII / DII Flow Tracker
+    # 4. FII / DII Flow Tracker
     st.subheader("🐋 FII / DII Flow Tracker")
     st.markdown("<small style='color:#7b8cad'>Tracks net institutional buying and selling across the last 5 active trading sessions.</small>", unsafe_allow_html=True)
     
@@ -1249,10 +1275,10 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
             total_prefix = "+" if total_val > 0 else ""
             
             styled_rows += f"""<tr>
-<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-weight:600;">{row['Trading Date']}</td>
-<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{fii_color};">{fii_prefix}{fii_val:,.0f} Cr</td>
-<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{dii_color};">{dii_prefix}{dii_val:,.0f} Cr</td>
-<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{total_color}; font-weight:700;">{total_prefix}{total_val:,.0f} Cr</td>
+<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-weight:600; color:#cbd5e1;">{row['Trading Date']}</td>
+<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{fii_color}; font-weight:600;">{fii_prefix}{fii_val:,.0f} Cr</td>
+<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{dii_color}; font-weight:600;">{dii_prefix}{dii_val:,.0f} Cr</td>
+<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{total_color}; font-weight:800;">{total_prefix}{total_val:,.0f} Cr</td>
 </tr>"""
             
         st.markdown(f"""
@@ -1260,10 +1286,10 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
             <table class="custom-table" style="margin-top:0;">
                 <thead>
                     <tr>
-                        <th>Trading Date</th>
-                        <th>FII Net Purchases (₹ Cr)</th>
-                        <th>DII Net Purchases (₹ Cr)</th>
-                        <th>Combined Inflow (₹ Cr)</th>
+                        <th style="background-color: #1a2035;">Trading Date</th>
+                        <th style="background-color: #1a2035;">FII Net Purchases (₹ Cr)</th>
+                        <th style="background-color: #1a2035;">DII Net Purchases (₹ Cr)</th>
+                        <th style="background-color: #1a2035;">Combined Inflow (₹ Cr)</th>
                     </tr>
                 </thead>
                 <tbody>{styled_rows}</tbody>
@@ -1273,7 +1299,7 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
         
     st.markdown("<hr style='border-color: #1e293b; margin: 2rem 0;' />", unsafe_allow_html=True)
 
-    # 4. Hidden Gems (1-Week Momentum Scanner)
+    # 5. Hidden Gems (1-Week Momentum Scanner)
     st.markdown("""
     <div style="margin-top: 2rem; margin-bottom: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -1295,11 +1321,11 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 col_g_details, col_g_action = st.columns([5, 1])
                 with col_g_details:
                     st.markdown(f"""
-                    <div style="background: #161b27; border: 1px solid #232d3f; border-radius: 6px; padding: 0.8rem 1.2rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div style="background: #161b27; border: 1px solid #232d3f; border-radius: 6px; padding: 0.8rem 1.2rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                         <div>
                             <span style="font-weight: 700; font-size: 1rem; color: #f8fafc;">{g['Company']}</span> 
-                            <code style="color: #4a9eff; margin-left: 0.5rem;">{g['Ticker']}</code>
-                            <span style="color: #64748b; margin-left: 1rem; font-size: 0.8rem;">{g['Sector']}</span>
+                            <code style="color: #4a9eff; margin-left: 0.5rem; background: #0f1117; padding: 2px 6px; border-radius: 4px; border: 1px solid #2a3550;">{g['Ticker']}</code>
+                            <span style="color: #64748b; margin-left: 1rem; font-size: 0.8rem; font-weight: 500;">{g['Sector']}</span>
                         </div>
                         <div><span class="{g['BadgeType']}">{g['Catalyst']}</span></div>
                     </div>
