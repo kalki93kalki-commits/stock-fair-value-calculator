@@ -1250,6 +1250,73 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                         st.warning("Data unavailable")
                 except Exception:
                     st.warning("Error loading index")
+
+    # ── 2.5 SECTOR BREADTH HEATMAP ───────────────────────────────────────────
+    st.markdown("""
+    <div style="margin-top: 2rem; margin-bottom: 1rem;">
+        <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #f8fafc;">🔥 Sector Breadth Heatmap</h3>
+        <p style="color: #64748b; font-size: 0.85rem; margin-top: 0.2rem;">Live institutional money flow across major NSE sectors. Ranked by momentum.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    @st.cache_data(ttl=300, show_spinner=False)
+    def get_heatmap_data():
+        # Major NSE Sector Indices
+        sectors = {
+            "Banking": "^NSEBANK", 
+            "IT / Tech": "^CNXIT", 
+            "Auto": "^CNXAUTO", 
+            "Pharma": "^CNXPHARMA", 
+            "FMCG": "^CNXFMCG", 
+            "Metals": "^CNXMETAL", 
+            "Energy": "^CNXENERGY", 
+            "Real Estate": "^CNXREALTY"
+        }
+        res = []
+        for name, sym in sectors.items():
+            try:
+                t = get_safe_ticker(sym)
+                if t:
+                    h = t.history(period="5d")
+                    if len(h) >= 2:
+                        c = ((h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2]) * 100
+                        res.append({"name": name, "change": c})
+            except: 
+                pass
+        # Sort from highest gainer to biggest loser
+        return sorted(res, key=lambda x: x['change'], reverse=True)
+
+    with st.spinner("Mapping sector money flows..."):
+        heatmap = get_heatmap_data()
+        if heatmap:
+            h_html = '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.8rem; margin-bottom:2.5rem;">'
+            for s in heatmap:
+                c = s['change']
+                # Dynamic glowing color shading based on intensity
+                if c >= 1.5: 
+                    bg, border, text = "rgba(16, 185, 129, 0.15)", "#10b981", "#10b981"
+                elif c > 0.5: 
+                    bg, border, text = "rgba(16, 185, 129, 0.08)", "rgba(16, 185, 129, 0.4)", "#34d399"
+                elif c > 0: 
+                    bg, border, text = "rgba(16, 185, 129, 0.03)", "rgba(16, 185, 129, 0.15)", "#a7f3d0"
+                elif c <= -1.5: 
+                    bg, border, text = "rgba(239, 68, 68, 0.15)", "#ef4444", "#ef4444"
+                elif c < -0.5: 
+                    bg, border, text = "rgba(239, 68, 68, 0.08)", "rgba(239, 68, 68, 0.4)", "#f87171"
+                elif c < 0: 
+                    bg, border, text = "rgba(239, 68, 68, 0.03)", "rgba(239, 68, 68, 0.15)", "#fecaca"
+                else: 
+                    bg, border, text = "rgba(148, 163, 184, 0.05)", "rgba(148, 163, 184, 0.2)", "#cbd5e1"
+                
+                sign = "+" if c > 0 else ""
+                h_html += f"""
+                <div style="background:{bg}; border:1px solid {border}; border-radius:8px; padding:1.2rem 0.5rem; text-align:center; display:flex; flex-direction:column; justify-content:center; min-height:90px;">
+                    <div style="font-size:0.75rem; font-weight:700; color:#e8eaf0; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">{s['name']}</div>
+                    <div style="font-family:'JetBrains Mono', monospace; font-size:1.2rem; font-weight:700; color:{text};">{sign}{c:.2f}%</div>
+                </div>
+                """
+            h_html += '</div>'
+            st.markdown(h_html, unsafe_allow_html=True)
                     
   # 3. LIVE MACRO PULSE (Real-time Market Drivers)
     st.subheader("⚡ Live Macro Pulse: Today's Market Drivers")
