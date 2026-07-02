@@ -1308,13 +1308,15 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 else: 
                     bg, border, text = "rgba(148, 163, 184, 0.05)", "rgba(148, 163, 184, 0.2)", "#cbd5e1"
                 
-                sign = "+" if c > 0 else ""
+               sign = "+" if c > 0 else ""
+                
+                # ── THE FIX: Flush completely left to bypass markdown's code block parser ──
                 h_html += f"""
-                <div style="background:{bg}; border:1px solid {border}; border-radius:8px; padding:1.2rem 0.5rem; text-align:center; display:flex; flex-direction:column; justify-content:center; min-height:90px;">
-                    <div style="font-size:0.75rem; font-weight:700; color:#e8eaf0; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">{s['name']}</div>
-                    <div style="font-family:'JetBrains Mono', monospace; font-size:1.2rem; font-weight:700; color:{text};">{sign}{c:.2f}%</div>
-                </div>
-                """
+<div style="background:{bg}; border:1px solid {border}; border-radius:8px; padding:1.2rem 0.5rem; text-align:center; display:flex; flex-direction:column; justify-content:center; min-height:90px;">
+<div style="font-size:0.75rem; font-weight:700; color:#e8eaf0; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">{s['name']}</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.2rem; font-weight:700; color:{text};">{sign}{c:.2f}%</div>
+</div>
+"""
             h_html += '</div>'
             st.markdown(h_html, unsafe_allow_html=True)
                     
