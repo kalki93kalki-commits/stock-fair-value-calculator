@@ -1977,6 +1977,96 @@ else:
     st.info("ℹ️ Advanced operational metrics unavailable for this ticker.")
 
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
+# ─────────────────────────────────────────────
+# 🏭 INFRASTRUCTURE & CAPEX RADAR
+# ─────────────────────────────────────────────
+st.markdown('<div class="section-title">🏭 Physical Infrastructure & CapEx Radar</div>', unsafe_allow_html=True)
+st.markdown(
+    "<small style='color:#7b8cad'>"
+    "Tracking how much cash this company burns to maintain its shop floor, machinery, and supply chain infrastructure.</small><br><br>",
+    unsafe_allow_html=True
+)
+
+cf = data.get("cashflow")
+
+if cf is not None and not cf.empty:
+    def get_cf_val(row_names):
+        for r in row_names:
+            if r in cf.index:
+                cols = cf.columns
+                if len(cols) > 0:
+                    val = cf.loc[r, cols[0]]
+                    if pd.notna(val): return val
+        return None
+
+    ocf = get_cf_val(['Operating Cash Flow', 'Total Cash From Operating Activities'])
+    # CapEx is universally reported as a negative cash outflow, so we use abs() to get the pure number
+    capex_raw = get_cf_val(['Capital Expenditure', 'Capital Expenditures'])
+    
+    if ocf is not None and capex_raw is not None:
+        capex = abs(capex_raw)
+        fcf = ocf - capex
+        
+        # Calculate CapEx to Operating Cash Flow Ratio
+        if ocf > 0:
+            reinvestment_rate = (capex / ocf) * 100
+            
+            # Grading the capital intensity of the physical operations
+            if reinvestment_rate < 30:
+                cap_color, cap_status, cap_desc = "#22c55e", "🟢 Cash Cow (Low Maintenance)", "Requires very little capital to maintain operations. Generates massive free cash."
+            elif reinvestment_rate <= 75:
+                cap_color, cap_status, cap_desc = "#f59e0b", "🟡 Steady Plant Expansion", "Reinvesting a sustainable amount of cash back into physical machinery and plant upgrades."
+            elif reinvestment_rate <= 120:
+                cap_color, cap_status, cap_desc = "#e11d48", "🔴 Heavy Capital Burn", "Burning almost all operating cash on maintaining facilities and tooling. Highly capital intensive."
+            else:
+                cap_color, cap_status, cap_desc = "#9f1239", "🚨 Cash Bleed (Negative FCF)", "CapEx completely exceeds operating cash. The company is borrowing money just to keep the lights on."
+        else:
+            reinvestment_rate = 0
+            ocf = 0 if pd.isna(ocf) else ocf
+            cap_color, cap_status, cap_desc = "#9f1239", "🚨 Negative Operating Cash", "The core business operations are bleeding cash before even accounting for infrastructure upgrades."
+
+        # Format to Crores for the UI display
+        ocf_cr = ocf / 1e7
+        capex_cr = capex / 1e7
+        fcf_cr = fcf / 1e7
+
+        # ── Flush left to completely bypass Markdown's code block rendering bug ──
+        radar_html = f"""
+<div style="background:rgba(30, 41, 59, 0.4); border:1px solid #232a3b; border-left:4px solid {cap_color}; border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
+<div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+<div style="flex:2; min-width:250px;">
+<div style="font-size:1.05rem; font-weight:700; color:#e8eaf0; margin-bottom:0.3rem;">{cap_status}</div>
+<div style="font-size:0.8rem; color:#8a9ab5; line-height:1.5;">{cap_desc}</div>
+</div>
+<div style="flex:1; min-width:120px; border-left:1px solid #232a3b; padding-left:1.5rem;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.3rem;">CapEx / OCF Ratio</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:{cap_color};">{reinvestment_rate:.1f}%</div>
+<div style="font-size:0.7rem; color:#5a6a8a; margin-top:0.2rem;">% of cash reinvested</div>
+</div>
+</div>
+<div style="display:flex; gap:2rem; margin-top:1.5rem; padding-top:1.2rem; border-top:1px solid #232a3b; flex-wrap:wrap;">
+<div style="flex:1; min-width:130px;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">Operating Cash Flow</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:#e8eaf0;">₹{ocf_cr:,.0f} <span style="font-size:0.75rem; color:#5a6a8a;">Cr</span></div>
+</div>
+<div style="flex:1; min-width:130px;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">Capital Expenditure</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:#ef4444;">-₹{capex_cr:,.0f} <span style="font-size:0.75rem; color:#5a6a8a;">Cr</span></div>
+</div>
+<div style="flex:1; min-width:130px;">
+<div style="font-size:0.7rem; color:#8a9ab5; text-transform:uppercase; margin-bottom:0.2rem;">Free Cash Flow (FCF)</div>
+<div style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:600; color:{'#22c55e' if fcf > 0 else '#ef4444'};">₹{fcf_cr:,.0f} <span style="font-size:0.75rem; color:#5a6a8a;">Cr</span></div>
+</div>
+</div>
+</div>
+"""
+        st.markdown(radar_html, unsafe_allow_html=True)
+    else:
+        st.info("ℹ️ Specific Capital Expenditure (CapEx) data is currently unavailable for this ticker.")
+else:
+    st.info("ℹ️ Cash flow statement is unavailable for this ticker.")
+
+st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # COMPETITOR MATRIX (QUALITY VS. PRICE)
