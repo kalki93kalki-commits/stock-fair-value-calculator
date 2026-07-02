@@ -1175,81 +1175,59 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
         The core reality of equity valuation: unmasking institutional money flows and structural data layers.
     </p>
     """, unsafe_allow_html=True)
-# ── AUTOMATED LIVE DASHBOARD SEARCH ROUTER ──────────────────────────────────
+# ── AUTOMATED LIVE DASHBOARD SEARCH ROUTER (INSTANT ENTER) ────────────────
     st.markdown('<div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #7b8cad; margin-bottom: 0.5rem;">🔍 Global Terminal Query</div>', unsafe_allow_html=True)
     
     # 1. Full-width search bar
     search_query = st.text_input(
         label="home_search",
-        placeholder="Type any Indian company name or symbol (e.g., Tata Motors, Wipro, Infy)...",
+        placeholder="Type any Indian company (e.g. Tata, Wipro) and press Enter ↵",
         label_visibility="collapsed",
         key="dashboard_search_input"
     )
     
-    # 2. Live autocomplete query pipeline
-    suggestions = []
+    # 2. "I Feel Lucky" Auto-Resolver
     if search_query.strip():
+        ticker_target = ""
         url = f"https://query2.finance.yahoo.com/v1/finance/search?q={search_query.strip()}"
         headers = {'User-Agent': 'Mozilla/5.0'} 
         try:
             res = requests.get(url, headers=headers).json()
+            # Instantly lock onto the absolute top Indian market match
             for q in res.get('quotes', []):
                 sym = q.get('symbol', '')
                 if sym.endswith('.NS') or sym.endswith('.BO'):
-                    name = q.get('longname') or q.get('shortname') or 'Unknown'
-                    suggestions.append(f"{sym}  |  {name}")
+                    ticker_target = sym
+                    break
         except Exception:
             pass
-
-    # 3. Automated Routing Logic
-    if suggestions:
-        options_pool = ["Select the company below to analyze..."] + suggestions
-        selected_option = st.selectbox(
-            "Matches discovered:", 
-            options=options_pool, 
-            index=0,
-            key="dashboard_select_box"
-        )
-        
-        # If the user clicks a valid option from the dropdown pool
-        if selected_option != "Select the company below to analyze...":
-            ticker_target = selected_option.split("  |  ")[0]
             
-            with st.spinner(f"Mapping structural financial metrics for {ticker_target}..."):
-                try:
-                    # Sync global cross-page states
-                    st.session_state.stock_data = fetch_stock_data(ticker_target)
-                    st.session_state.ticker_input = ticker_target
-                    st.session_state.selected_ticker = ticker_target
-                    
-                    # ── THE MEMORY WIPE FIX ──
-                    st.session_state.current_page = "📈 Stock Fundamental Analyzer"
-                    if "global_sidebar_navigation" in st.session_state:
-                        del st.session_state["global_sidebar_navigation"]
-                    
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"⚠️ {e}")
-                    
-    elif search_query.strip():
-        ticker_target = search_query.strip().upper()
-        if not ticker_target.endswith(".NS") and not ticker_target.endswith(".BO"):
-            ticker_target += ".NS"
-            
+        # Fallback if Yahoo autocomplete fails but they typed something
+        if not ticker_target:
+            ticker_target = search_query.strip().upper()
+            if not ticker_target.endswith(".NS") and not ticker_target.endswith(".BO"):
+                ticker_target += ".NS"
+                
+        # 3. Instant Navigation & Fetch (No buttons, no dropdowns)
         with st.spinner(f"Mapping structural financial metrics for {ticker_target}..."):
             try:
+                # Sync global cross-page states
                 st.session_state.stock_data = fetch_stock_data(ticker_target)
                 st.session_state.ticker_input = ticker_target
                 st.session_state.selected_ticker = ticker_target
                 
-                # ── THE MEMORY WIPE FIX ──
+                # Switch the page
                 st.session_state.current_page = "📈 Stock Fundamental Analyzer"
+                
+                # SAFELY WIPE MEMORY: Prevents Streamlit widget conflicts and infinite loops
                 if "global_sidebar_navigation" in st.session_state:
                     del st.session_state["global_sidebar_navigation"]
+                if "dashboard_search_input" in st.session_state:
+                    del st.session_state["dashboard_search_input"]
                 
                 st.rerun()
             except Exception as e:
-                st.error(f"⚠️ {e}")
+                st.error(f"⚠️ Could not load data for {ticker_target}: {e}")
 
     st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
     # 2. Live Index Overview (Including VIX)
