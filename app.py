@@ -1175,48 +1175,44 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
         The core reality of equity valuation: unmasking institutional money flows and structural data layers.
     </p>
     """, unsafe_allow_html=True)
-
-    # ── LIVE DASHBOARD TICKER SEARCH ROUTER ──────────────────────────────────────
+# ── AUTOMATED LIVE DASHBOARD SEARCH ROUTER ──────────────────────────────────
     st.markdown('<div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #7b8cad; margin-bottom: 0.5rem;">🔍 Global Terminal Query</div>', unsafe_allow_html=True)
     
-    col_input, col_btn = st.columns([4, 1])
+    # 1. Full-width search bar (no buttons needed)
+    search_query = st.text_input(
+        label="home_search",
+        placeholder="Type any Indian company name or symbol (e.g., Tata Motors, Wipro, Infy)...",
+        label_visibility="collapsed",
+        key="dashboard_search_input"
+    )
     
-    with col_input:
-        search_query = st.text_input(
-            label="home_search",
-            placeholder="Type any Indian company name or symbol (e.g., Tata Motors, Wipro, Infy)...",
-            label_visibility="collapsed",
-            key="dashboard_search_input"
+    # 2. Live autocomplete query pipeline
+    suggestions = []
+    if search_query.strip():
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={search_query.strip()}"
+        headers = {'User-Agent': 'Mozilla/5.0'} 
+        try:
+            res = requests.get(url, headers=headers).json()
+            for q in res.get('quotes', []):
+                sym = q.get('symbol', '')
+                if sym.endswith('.NS') or sym.endswith('.BO'):
+                    name = q.get('longname') or q.get('shortname') or 'Unknown'
+                    suggestions.append(f"{sym}  |  {name}")
+        except Exception:
+            pass
+
+    # 3. Automated Routing Logic
+    if suggestions:
+        # We inject an empty helper instruction at index 0 so it doesn't trigger instantly
+        options_pool = ["Select the company below to analyze..."] + suggestions
+        selected_option = st.selectbox(
+            "Matches discovered:", 
+            options=options_pool, 
+            index=0,
+            key="dashboard_select_box"
         )
         
-        # Live autocomplete parser pipeline
-        suggestions = []
-        if search_query.strip():
-            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={search_query.strip()}"
-            headers = {'User-Agent': 'Mozilla/5.0'} 
-            try:
-                res = requests.get(url, headers=headers).json()
-                for q in res.get('quotes', []):
-                    sym = q.get('symbol', '')
-                    if sym.endswith('.NS') or sym.endswith('.BO'):
-                        name = q.get('longname') or q.get('shortname') or 'Unknown'
-                        suggestions.append(f"{sym}  |  {name}")
-            except Exception:
-                pass
-
-        ticker_raw = ""
-        if suggestions:
-            selected_option = st.selectbox("Matches discovered (First item auto-selected):", suggestions, key="dashboard_select_box")
-            ticker_raw = selected_option.split("  |  ")[0]
-        elif search_query.strip():
-            ticker_raw = search_query.strip().upper()
-            if not ticker_raw.endswith(".NS") and not ticker_raw.endswith(".BO"):
-                ticker_raw += ".NS"
-
-    with col_btn:
-        analyze_clicked = st.button("Analyze →", use_container_width=True, key="dashboard_analyze_trigger")
-
-   # If the user chooses a valid option from the dropdown pool
+        # If the user clicks a valid option from the dropdown pool
         if selected_option != "Select the company below to analyze...":
             ticker_target = selected_option.split("  |  ")[0]
             
@@ -1227,7 +1223,7 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                     st.session_state.ticker_input = ticker_target
                     st.session_state.selected_ticker = ticker_target
                     
-                    # ── THE MAGIC FIX: Update both the page variable AND the sidebar widget ──
+                    # Update both the page variable AND the sidebar widget
                     target_page = "📈 Stock Fundamental Analyzer"
                     st.session_state.current_page = target_page
                     st.session_state.global_sidebar_navigation = target_page 
@@ -1248,7 +1244,7 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 st.session_state.ticker_input = ticker_target
                 st.session_state.selected_ticker = ticker_target
                 
-                # ── THE MAGIC FIX: Update both the page variable AND the sidebar widget ──
+                # Update both the page variable AND the sidebar widget
                 target_page = "📈 Stock Fundamental Analyzer"
                 st.session_state.current_page = target_page
                 st.session_state.global_sidebar_navigation = target_page 
