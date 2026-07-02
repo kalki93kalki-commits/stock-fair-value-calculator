@@ -1216,14 +1216,43 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
     with col_btn:
         analyze_clicked = st.button("Analyze →", use_container_width=True, key="dashboard_analyze_trigger")
 
-    # If user initiates a global search on the home screen, intercept and route pages
-    if ticker_raw and analyze_clicked:
-        with st.spinner(f"Mapping structural financial metrics for {ticker_raw}..."):
+   # If the user chooses a valid option from the dropdown pool
+        if selected_option != "Select the company below to analyze...":
+            ticker_target = selected_option.split("  |  ")[0]
+            
+            with st.spinner(f"Mapping structural financial metrics for {ticker_target}..."):
+                try:
+                    # Sync global cross-page states
+                    st.session_state.stock_data = fetch_stock_data(ticker_target)
+                    st.session_state.ticker_input = ticker_target
+                    st.session_state.selected_ticker = ticker_target
+                    
+                    # ── THE MAGIC FIX: Update both the page variable AND the sidebar widget ──
+                    target_page = "📈 Stock Fundamental Analyzer"
+                    st.session_state.current_page = target_page
+                    st.session_state.global_sidebar_navigation = target_page 
+                    
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"⚠️ {e}")
+                    
+    elif search_query.strip():
+        # Fallback raw entry router if they type a full symbol and press Enter directly
+        ticker_target = search_query.strip().upper()
+        if not ticker_target.endswith(".NS") and not ticker_target.endswith(".BO"):
+            ticker_target += ".NS"
+            
+        with st.spinner(f"Mapping structural financial metrics for {ticker_target}..."):
             try:
-                st.session_state.stock_data = fetch_stock_data(ticker_raw)
-                st.session_state.ticker_input = ticker_raw
-                st.session_state.selected_ticker = ticker_raw
-                st.session_state.current_page = "📈 Stock Fundamental Analyzer"
+                st.session_state.stock_data = fetch_stock_data(ticker_target)
+                st.session_state.ticker_input = ticker_target
+                st.session_state.selected_ticker = ticker_target
+                
+                # ── THE MAGIC FIX: Update both the page variable AND the sidebar widget ──
+                target_page = "📈 Stock Fundamental Analyzer"
+                st.session_state.current_page = target_page
+                st.session_state.global_sidebar_navigation = target_page 
+                
                 st.rerun()
             except Exception as e:
                 st.error(f"⚠️ {e}")
