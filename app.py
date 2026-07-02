@@ -1259,21 +1259,51 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
     </div>
     """, unsafe_allow_html=True)
     
-    @st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
     def get_heatmap_data():
-        # Mixed data types to prevent Yahoo Finance API rate-limiting blocks
-        sectors = {
-            # Variation 1: Liquid ETFs (Equities endpoint)
-            "Banking": ["BANKBEES.NS"], 
-            "IT / Tech": ["ITBEES.NS"], 
-            "Auto": ["AUTOBEES.NS"], 
-            "Pharma": ["PHARMABEES.NS"], 
+        import requests
+        
+        # ── 1. PRIMARY ATTEMPT: Official NSE Live API ──
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.5"
+        }
+        
+        try:
+            session = requests.Session()
+            # Step A: Ping the homepage to generate valid session cookies (bypasses basic bot-protection)
+            session.get("https://www.nseindia.com", headers=headers, timeout=4)
             
-            # Variation 2: Native NSE Indices (Index endpoint - dramatically reduces API load)
-            "FMCG": ["^CNXFMCG"], 
-            "Metals": ["^CNXMETAL"], 
-            "Energy": ["^CNXENERGY"], 
-            "Real Estate": ["^CNXREALTY"]
+            # Step B: Hit the hidden JSON API used by the official NSE live market dashboard
+            res = session.get("https://www.nseindia.com/api/allIndices", headers=headers, timeout=4)
+            
+            if res.status_code == 200:
+                data = res.json()
+                nse_mapping = {
+                    "NIFTY BANK": "Banking", "NIFTY IT": "IT / Tech", "NIFTY AUTO": "Auto",
+                    "NIFTY PHARMA": "Pharma", "NIFTY FMCG": "FMCG", "NIFTY METAL": "Metals",
+                    "NIFTY ENERGY": "Energy", "NIFTY REALTY": "Real Estate"
+                }
+                
+                res_list = []
+                for item in data.get("data", []):
+                    idx_name = item.get("indexSymbol") or item.get("index")
+                    if idx_name in nse_mapping:
+                        res_list.append({"name": nse_mapping[idx_name], "change": float(item.get("percentChange", 0))})
+                
+                # If we successfully grabbed all sectors, return them immediately!
+                if len(res_list) >= 8:
+                    return sorted(res_list, key=lambda x: x['change'], reverse=True)
+        except Exception:
+            pass # If the NSE firewall blocks the Streamlit IP, silently fail and use the fallback below
+
+        # ── 2. BULLETPROOF FALLBACK: Synthetic Baskets ──
+        # (Runs instantly if the NSE API is down or blocking cloud servers)
+        sectors = {
+            "Banking": ["BANKBEES.NS"], "IT / Tech": ["ITBEES.NS"], "Auto": ["AUTOBEES.NS"], "Pharma": ["PHARMABEES.NS"], 
+            "FMCG": ["ITC.NS", "HINDUNILVR.NS", "NESTLEIND.NS"], "Metals": ["TATASTEEL.NS", "HINDALCO.NS", "JSWSTEEL.NS"], 
+            "Energy": ["RELIANCE.NS", "ONGC.NS", "POWERGRID.NS"], "Real Estate": ["DLF.NS", "LODHA.NS", "GODREJPROP.NS"]
         }
         
         res = []
@@ -1296,7 +1326,6 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 avg_change = basket_change / valid_tickers
                 res.append({"name": name, "change": avg_change})
                 
-        # Sort from highest gainer to biggest loser
         return sorted(res, key=lambda x: x['change'], reverse=True)
 
     with st.spinner("Mapping sector money flows..."):
