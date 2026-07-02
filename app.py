@@ -1178,7 +1178,7 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
 # ── AUTOMATED LIVE DASHBOARD SEARCH ROUTER ──────────────────────────────────
     st.markdown('<div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #7b8cad; margin-bottom: 0.5rem;">🔍 Global Terminal Query</div>', unsafe_allow_html=True)
     
-    # 1. Full-width search bar (no buttons needed)
+    # 1. Full-width search bar
     search_query = st.text_input(
         label="home_search",
         placeholder="Type any Indian company name or symbol (e.g., Tata Motors, Wipro, Infy)...",
@@ -1203,7 +1203,6 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
 
     # 3. Automated Routing Logic
     if suggestions:
-        # We inject an empty helper instruction at index 0 so it doesn't trigger instantly
         options_pool = ["Select the company below to analyze..."] + suggestions
         selected_option = st.selectbox(
             "Matches discovered:", 
@@ -1223,17 +1222,16 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                     st.session_state.ticker_input = ticker_target
                     st.session_state.selected_ticker = ticker_target
                     
-                    # Update both the page variable AND the sidebar widget
-                    target_page = "📈 Stock Fundamental Analyzer"
-                    st.session_state.current_page = target_page
-                    st.session_state.global_sidebar_navigation = target_page 
+                    # ── THE MEMORY WIPE FIX ──
+                    st.session_state.current_page = "📈 Stock Fundamental Analyzer"
+                    if "global_sidebar_navigation" in st.session_state:
+                        del st.session_state["global_sidebar_navigation"]
                     
                     st.rerun()
                 except Exception as e:
                     st.error(f"⚠️ {e}")
                     
     elif search_query.strip():
-        # Fallback raw entry router if they type a full symbol and press Enter directly
         ticker_target = search_query.strip().upper()
         if not ticker_target.endswith(".NS") and not ticker_target.endswith(".BO"):
             ticker_target += ".NS"
@@ -1244,17 +1242,16 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 st.session_state.ticker_input = ticker_target
                 st.session_state.selected_ticker = ticker_target
                 
-                # Update both the page variable AND the sidebar widget
-                target_page = "📈 Stock Fundamental Analyzer"
-                st.session_state.current_page = target_page
-                st.session_state.global_sidebar_navigation = target_page 
+                # ── THE MEMORY WIPE FIX ──
+                st.session_state.current_page = "📈 Stock Fundamental Analyzer"
+                if "global_sidebar_navigation" in st.session_state:
+                    del st.session_state["global_sidebar_navigation"]
                 
                 st.rerun()
             except Exception as e:
                 st.error(f"⚠️ {e}")
 
     st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
-    
     # 2. Live Index Overview (Including VIX)
     st.subheader("📊 Today's Index Overview")
     index_cols = st.columns(3)
