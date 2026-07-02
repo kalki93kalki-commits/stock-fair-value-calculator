@@ -1381,11 +1381,20 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
     st.stop()
 
 # ─────────────────────────────────────────────
-# MAIN CONTENT
+# MAIN CONTENT (Stock Fundamental Analyzer)
+# ─────────────────────────────────────────────
+
+# ── SaaS "Go Back" Navigation ──
+if st.button("← Return to Market Dashboard", type="secondary"):
+    st.session_state.current_page = "◬ Market Dashboard & Insights"
     
-# ─────────────────────────────────────────────
-# MAIN CONTENT
-# ─────────────────────────────────────────────
+    # Safely wipe the sidebar memory so it updates to the Home screen
+    if "global_sidebar_navigation" in st.session_state:
+        del st.session_state["global_sidebar_navigation"]
+        
+    st.rerun()
+
+# ── Main Header ──
 st.markdown("""
 <div class="main-header">
   <span class="brand-name">STOCK</span>
