@@ -1261,28 +1261,41 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
     
     @st.cache_data(ttl=300, show_spinner=False)
     def get_heatmap_data():
-        # Major NSE Sector Indices
+        # Mixed data types to prevent Yahoo Finance API rate-limiting blocks
         sectors = {
-            "Banking": "^NSEBANK", 
-            "IT / Tech": "^CNXIT", 
-            "Auto": "^CNXAUTO", 
-            "Pharma": "^CNXPHARMA", 
-            "FMCG": "^CNXFMCG", 
-            "Metals": "^CNXMETAL", 
-            "Energy": "^CNXENERGY", 
-            "Real Estate": "^CNXREALTY"
+            # Variation 1: Liquid ETFs (Equities endpoint)
+            "Banking": ["BANKBEES.NS"], 
+            "IT / Tech": ["ITBEES.NS"], 
+            "Auto": ["AUTOBEES.NS"], 
+            "Pharma": ["PHARMABEES.NS"], 
+            
+            # Variation 2: Native NSE Indices (Index endpoint - dramatically reduces API load)
+            "FMCG": ["^CNXFMCG"], 
+            "Metals": ["^CNXMETAL"], 
+            "Energy": ["^CNXENERGY"], 
+            "Real Estate": ["^CNXREALTY"]
         }
+        
         res = []
-        for name, sym in sectors.items():
-            try:
-                t = get_safe_ticker(sym)
-                if t:
-                    h = t.history(period="5d")
-                    if len(h) >= 2:
-                        c = ((h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2]) * 100
-                        res.append({"name": name, "change": c})
-            except: 
-                pass
+        for name, tickers in sectors.items():
+            basket_change = 0
+            valid_tickers = 0
+            for sym in tickers:
+                try:
+                    t = get_safe_ticker(sym)
+                    if t:
+                        h = t.history(period="5d")
+                        if len(h) >= 2:
+                            c = ((h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2]) * 100
+                            basket_change += c
+                            valid_tickers += 1
+                except: 
+                    pass
+            
+            if valid_tickers > 0:
+                avg_change = basket_change / valid_tickers
+                res.append({"name": name, "change": avg_change})
+                
         # Sort from highest gainer to biggest loser
         return sorted(res, key=lambda x: x['change'], reverse=True)
 
