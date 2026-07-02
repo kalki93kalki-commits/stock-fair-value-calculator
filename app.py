@@ -1900,6 +1900,14 @@ else:
 </div>
     """, unsafe_allow_html=True)
 
+# ── Analyst Context Note ──
+st.markdown("""
+<div style="margin-top: 1.5rem; padding: 1rem 1.2rem; background: rgba(15, 23, 42, 0.4); border-left: 3px solid #3a4a6a; border-radius: 0 6px 6px 0; font-size: 0.75rem; color: #64748b; line-height: 1.6; letter-spacing: 0.02em;">
+    <b style="color: #7b8cad; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.08em;">Context Note &mdash;</b><br>
+    The F-Score is a rigid, backward-looking mathematical algorithm devoid of narrative or emotion. It grades pure historical efficiency. For example, a company executing massive capital expenditure (CapEx) for future expansion may temporarily fail "Asset Turnover" or "Debt Ratio" checks despite having a strong long-term strategy. Treat this radar as a strict baseline reality check, not a definitive verdict.
+</div>
+""", unsafe_allow_html=True)
+
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
