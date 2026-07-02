@@ -1272,10 +1272,7 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
         
         try:
             session = requests.Session()
-            # Step A: Ping the homepage to generate valid session cookies (bypasses basic bot-protection)
             session.get("https://www.nseindia.com", headers=headers, timeout=4)
-            
-            # Step B: Hit the hidden JSON API used by the official NSE live market dashboard
             res = session.get("https://www.nseindia.com/api/allIndices", headers=headers, timeout=4)
             
             if res.status_code == 200:
@@ -1292,14 +1289,12 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                     if idx_name in nse_mapping:
                         res_list.append({"name": nse_mapping[idx_name], "change": float(item.get("percentChange", 0))})
                 
-                # If we successfully grabbed all sectors, return them immediately!
                 if len(res_list) >= 8:
                     return sorted(res_list, key=lambda x: x['change'], reverse=True)
         except Exception:
-            pass # If the NSE firewall blocks the Streamlit IP, silently fail and use the fallback below
+            pass 
 
         # ── 2. BULLETPROOF FALLBACK: Synthetic Baskets ──
-        # (Runs instantly if the NSE API is down or blocking cloud servers)
         sectors = {
             "Banking": ["BANKBEES.NS"], "IT / Tech": ["ITBEES.NS"], "Auto": ["AUTOBEES.NS"], "Pharma": ["PHARMABEES.NS"], 
             "FMCG": ["ITC.NS", "HINDUNILVR.NS", "NESTLEIND.NS"], "Metals": ["TATASTEEL.NS", "HINDALCO.NS", "JSWSTEEL.NS"], 
@@ -1312,13 +1307,13 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
             valid_tickers = 0
             for sym in tickers:
                 try:
-                    t = get_safe_ticker(sym)
-                    if t:
-                        h = t.history(period="5d")
-                        if len(h) >= 2:
-                            c = ((h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2]) * 100
-                            basket_change += c
-                            valid_tickers += 1
+                    import yfinance as yf
+                    t = yf.Ticker(sym)
+                    h = t.history(period="5d")
+                    if len(h) >= 2:
+                        c = ((h['Close'].iloc[-1] - h['Close'].iloc[-2]) / h['Close'].iloc[-2]) * 100
+                        basket_change += c
+                        valid_tickers += 1
                 except: 
                     pass
             
