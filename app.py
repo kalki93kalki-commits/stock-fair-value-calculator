@@ -1062,10 +1062,17 @@ def build_hidden_gems_table():
 # ─────────────────────────────────────────────
 # SESSION STATE INITIALISATION
 # ─────────────────────────────────────────────
+# 1. New Multi-Page Navigation States
 if "current_page" not in st.session_state:
     st.session_state.current_page = "◬ Market Dashboard & Insights"
 if "selected_ticker" not in st.session_state:
     st.session_state.selected_ticker = "RELIANCE.NS"
+
+# 2. Original Valuation Engine States (Restored)
+if "stock_data" not in st.session_state:
+    st.session_state.stock_data = None
+if "ticker_input" not in st.session_state:
+    st.session_state.ticker_input = ""
 
 # Quick-action callback to bridge pages seamlessly
 def navigate_to_analyzer(ticker_symbol):
