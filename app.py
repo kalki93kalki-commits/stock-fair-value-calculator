@@ -80,6 +80,16 @@ html, body, [class*="css"] {
     text-transform: uppercase;
     color: #7b8cad !important;
 }
+/* ── Sidebar Flexbox for Bottom Pinning ── */
+[data-testid="stSidebar"] > div:first-child {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+.sidebar-bottom {
+    margin-top: auto; /* This magically pushes it to the absolute bottom */
+    padding-bottom: 2rem;
+}
 
 /* ── Sidebar section headers ── */
 .sidebar-section {
@@ -1136,15 +1146,18 @@ with st.sidebar:
     st.markdown("**Fundamental Valuation Analyzer**")
     st.markdown("<small style='color:#4a5570'>All values in ₹ Crore · Indian equities focus</small>", unsafe_allow_html=True)
 
-    st.markdown('<div class="sidebar-section">About</div>', unsafe_allow_html=True)
+    # ── Pushed to the absolute bottom ──
     st.markdown("""
-    <small style='color:#4a5570;line-height:1.7'>
-    This model estimates intrinsic value by projecting future revenue, 
-    applying a terminal multiple, and discounting back at your desired return.
-    <br><br>
-    This is a <b style='color:#7b8cad'>learning tool</b>, not financial advice.
-    Always do your own research.
-    </small>
+    <div class="sidebar-bottom">
+        <div class="sidebar-section" style="margin-top:0;">About</div>
+        <small style='color:#4a5570;line-height:1.7'>
+        This model estimates intrinsic value by projecting future revenue, 
+        applying a terminal multiple, and discounting back at your desired return.
+        <br><br>
+        This is a <b style='color:#7b8cad'>learning tool</b>, not financial advice.
+        Always do your own research.
+        </small>
+    </div>
     """, unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
