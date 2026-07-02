@@ -1107,27 +1107,9 @@ def navigate_to_analyzer(ticker_symbol):
     st.session_state.current_page = "📈 Stock Fundamental Analyzer"
     st.rerun()
 
-with st.sidebar:
-    st.markdown('<div class="sidebar-section">Navigation Portal</div>', unsafe_allow_html=True)
-    page_options = ["◬ Market Dashboard & Insights", "📈 Stock Fundamental Analyzer"]
-    
-    # Track selection positioning safely
-    current_idx = page_options.index(st.session_state.current_page) if st.session_state.current_page in page_options else 0
-    
-    selected_page = st.radio(
-        "Select Active Workspace:",
-        options=page_options,
-        index=current_idx,
-        label_visibility="collapsed",
-        key="global_sidebar_navigation"
-    )
-    
-    if selected_page != st.session_state.current_page:
-        st.session_state.current_page = selected_page
-        st.rerun()
 
 # ─────────────────────────────────────────────
-# SIDEBAR — Settings & Controls
+# SIDEBAR — Navigation & Info
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown('<div class="sidebar-section">Navigation Portal</div>', unsafe_allow_html=True)
@@ -1136,6 +1118,7 @@ with st.sidebar:
     # Track selection positioning safely
     current_idx = page_options.index(st.session_state.current_page) if st.session_state.current_page in page_options else 0
     
+    # The Navigation Radio Button
     selected_page = st.radio(
         "Select Active Workspace:",
         options=page_options,
@@ -1144,6 +1127,7 @@ with st.sidebar:
         key="global_sidebar_navigation"
     )
     
+    # Trigger page change
     if selected_page != st.session_state.current_page:
         st.session_state.current_page = selected_page
         st.rerun()
