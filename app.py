@@ -1107,6 +1107,25 @@ def navigate_to_analyzer(ticker_symbol):
     st.session_state.current_page = "📈 Stock Fundamental Analyzer"
     st.rerun()
 
+with st.sidebar:
+    st.markdown('<div class="sidebar-section">Navigation Portal</div>', unsafe_allow_html=True)
+    page_options = ["◬ Market Dashboard & Insights", "📈 Stock Fundamental Analyzer"]
+    
+    # Track selection positioning safely
+    current_idx = page_options.index(st.session_state.current_page) if st.session_state.current_page in page_options else 0
+    
+    selected_page = st.radio(
+        "Select Active Workspace:",
+        options=page_options,
+        index=current_idx,
+        label_visibility="collapsed",
+        key="global_sidebar_navigation"
+    )
+    
+    if selected_page != st.session_state.current_page:
+        st.session_state.current_page = selected_page
+        st.rerun()
+
 # ─────────────────────────────────────────────
 # SIDEBAR — Settings & Controls
 # ─────────────────────────────────────────────
@@ -1186,6 +1205,60 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
         The core reality of equity valuation: unmasking institutional money flows and structural data layers.
     </p>
     """, unsafe_allow_html=True)
+
+    # ── LIVE DASHBOARD TICKER SEARCH ROUTER ──────────────────────────────────────
+    st.markdown('<div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #7b8cad; margin-bottom: 0.5rem;">🔍 Global Terminal Query</div>', unsafe_allow_html=True)
+    
+    col_input, col_btn = st.columns([4, 1])
+    
+    with col_input:
+        search_query = st.text_input(
+            label="home_search",
+            placeholder="Type any Indian company name or symbol (e.g., Tata Motors, Wipro, Infy)...",
+            label_visibility="collapsed",
+            key="dashboard_search_input"
+        )
+        
+        # Live autocomplete parser pipeline
+        suggestions = []
+        if search_query.strip():
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={search_query.strip()}"
+            headers = {'User-Agent': 'Mozilla/5.0'} 
+            try:
+                res = requests.get(url, headers=headers).json()
+                for q in res.get('quotes', []):
+                    sym = q.get('symbol', '')
+                    if sym.endswith('.NS') or sym.endswith('.BO'):
+                        name = q.get('longname') or q.get('shortname') or 'Unknown'
+                        suggestions.append(f"{sym}  |  {name}")
+            except Exception:
+                pass
+
+        ticker_raw = ""
+        if suggestions:
+            selected_option = st.selectbox("Matches discovered (First item auto-selected):", suggestions, key="dashboard_select_box")
+            ticker_raw = selected_option.split("  |  ")[0]
+        elif search_query.strip():
+            ticker_raw = search_query.strip().upper()
+            if not ticker_raw.endswith(".NS") and not ticker_raw.endswith(".BO"):
+                ticker_raw += ".NS"
+
+    with col_btn:
+        analyze_clicked = st.button("Analyze →", use_container_width=True, key="dashboard_analyze_trigger")
+
+    # If user initiates a global search on the home screen, intercept and route pages
+    if ticker_raw and analyze_clicked:
+        with st.spinner(f"Mapping structural financial metrics for {ticker_raw}..."):
+            try:
+                st.session_state.stock_data = fetch_stock_data(ticker_raw)
+                st.session_state.ticker_input = ticker_raw
+                st.session_state.selected_ticker = ticker_raw
+                st.session_state.current_page = "📈 Stock Fundamental Analyzer"
+                st.rerun()
+            except Exception as e:
+                st.error(f"⚠️ {e}")
+
+    st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
     
     # 2. Live Index Overview (Including VIX)
     st.subheader("📊 Today's Index Overview")
