@@ -1130,54 +1130,27 @@ with st.sidebar:
 # SIDEBAR — Settings & Controls
 # ─────────────────────────────────────────────
 with st.sidebar:
+    st.markdown('<div class="sidebar-section">Navigation Portal</div>', unsafe_allow_html=True)
+    page_options = ["◬ Market Dashboard & Insights", "📈 Stock Fundamental Analyzer"]
+    
+    # Track selection positioning safely
+    current_idx = page_options.index(st.session_state.current_page) if st.session_state.current_page in page_options else 0
+    
+    selected_page = st.radio(
+        "Select Active Workspace:",
+        options=page_options,
+        index=current_idx,
+        label_visibility="collapsed",
+        key="global_sidebar_navigation"
+    )
+    
+    if selected_page != st.session_state.current_page:
+        st.session_state.current_page = selected_page
+        st.rerun()
+
     st.markdown('<div class="sidebar-section">ValuePulse</div>', unsafe_allow_html=True)
     st.markdown("**Fundamental Valuation Analyzer**")
     st.markdown("<small style='color:#4a5570'>All values in ₹ Crore · Indian equities focus</small>", unsafe_allow_html=True)
-
-    st.markdown('<div class="sidebar-section">Model Settings</div>', unsafe_allow_html=True)
-
-    # 1. Expected Sales Growth Rate Slider
-    growth_rate_pct = st.slider(
-        "Expected Sales Growth Rate",
-        min_value=1, max_value=50, value=10, step=1,
-        format="%d%%",
-        help="How fast you expect the company's revenue to grow per year. Default: 20%"
-    )
-    growth_rate = growth_rate_pct / 100.0
-
-    # 2. Terminal Sales Multiple Slider
-    terminal_multiple = st.slider(
-        "Terminal Sales Multiple (P/S)",
-        min_value=1.0, max_value=20.0, value=5.0, step=0.5,
-        format="%.1fx",
-        help="How many times its annual sales the company will be worth at exit. Default: 5×"
-    )
-
-    # 3. Desired Yearly Return Slider
-    desired_return_pct = st.slider(
-        "Desired Yearly Return",
-        min_value=5, max_value=40, value=15, step=1,
-        format="%d%%",
-        help="The minimum annual return you want to earn. Default: 15%"
-    )
-    desired_return = desired_return_pct / 100.0
-
-    hold_years = st.slider(
-        "Years to Hold",
-        min_value=1, max_value=30, value=10, step=1,
-        format="%d yrs",
-        help="How many years you plan to hold the stock. Default: 10"
-    )
-
-    st.markdown('<div class="sidebar-section">Sensitivity Range</div>', unsafe_allow_html=True)
-    sens_min = st.number_input("Min Growth %", value=10, min_value=1, max_value=49, step=5)
-    sens_max = st.number_input("Max Growth %", value=30, min_value=2, max_value=50, step=5)
-    sens_step= st.number_input("Step %", value=5, min_value=1, max_value=10, step=1)
-
-    sensitivity_range = [
-        round(x / 100, 2)
-        for x in range(int(sens_min), int(sens_max) + 1, int(sens_step))
-    ]
 
     st.markdown('<div class="sidebar-section">About</div>', unsafe_allow_html=True)
     st.markdown("""
@@ -1514,15 +1487,85 @@ if missing:
         "You can enter the missing values below."
     )
 
-# ── Company Header ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# DATA LOADED — Render the full analysis
+# ─────────────────────────────────────────────
+data = st.session_state.stock_data
+
+# Validate completeness
+missing = []
+if data["price"] is None:       missing.append("current share price")
+if data["market_cap"] is None:  missing.append("market cap")
+if data["revenue"] is None:     missing.append("revenue")
+
+if missing:
+    st.warning(
+        f"⚠️ Could not retrieve: **{', '.join(missing)}** for `{data['ticker']}`. "
+        "yfinance may not have complete data for this ticker. "
+        "You can enter the missing values below."
+    )
+
+# ── 1. Company Header ─────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="company-display">
   <div class="co-name">🏢 {data['name']} &nbsp;<code style="font-size:0.75rem;color:#4a9eff">{data['ticker']}</code></div>
   <div class="co-sector">{data['sector']} · {data['industry']}</div>
 </div>
 """, unsafe_allow_html=True)
-# ── Company Health Snapshot ───────────────────────────────────────────────────
-st.markdown('<div class="section-title" style="margin-top:0;">🩺 Company Health Snapshot</div>', unsafe_allow_html=True)
+
+
+# ── 2. INLINE MODEL SETTINGS (Moved from Sidebar) ────────────────────────────
+st.markdown('<div class="section-title" style="margin-top:0;">⚙️ Model Valuation Settings</div>', unsafe_allow_html=True)
+s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+
+with s_col1:
+    growth_rate_pct = st.slider(
+        "Expected Sales Growth Rate",
+        min_value=1, max_value=50, value=15, step=1,
+        format="%d%%",
+        key="inline_growth_rate_slider",
+        help="How fast you expect the company's revenue to grow per year."
+    )
+    growth_rate = growth_rate_pct / 100.0
+
+with s_col2:
+    terminal_multiple = st.slider(
+        "Terminal Sales Multiple (P/S)",
+        min_value=1.0, max_value=20.0, value=5.0, step=0.5,
+        format="%.1fx",
+        key="inline_terminal_multiple_slider",
+        help="How many times its annual sales the company will be worth at exit."
+    )
+
+with s_col3:
+    desired_return_pct = st.slider(
+        "Desired Yearly Return",
+        min_value=5, max_value=40, value=15, step=1,
+        format="%d%%",
+        key="inline_desired_return_slider",
+        help="The minimum annual return you want to earn."
+    )
+    desired_return = desired_return_pct / 100.0
+
+with s_col4:
+    hold_years = st.slider(
+        "Years to Hold",
+        min_value=1, max_value=30, value=10, step=1,
+        format="%d yrs",
+        key="inline_hold_years_slider",
+        help="How many years you plan to hold the stock."
+    )
+
+# AUTOMATED SENSITIVITY CALCULATION (Completely replaces manual fields)
+# Generates a clean 5-point grid centered automatically around your choice (e.g., -10%, -5%, Base, +5%, +10%)
+base_g = int(growth_rate_pct)
+sens_start = max(5, base_g - 10)
+sens_end = min(50, base_g + 10)
+sensitivity_range = [round(x / 100, 2) for x in range(sens_start, sens_end + 1, 5)]
+
+
+# ── 3. Company Health Snapshot ───────────────────────────────────────────────
+st.markdown('<div class="section-title">🩺 Company Health Snapshot</div>', unsafe_allow_html=True)
 
 info = data.get("info", {})
 
@@ -1542,13 +1585,11 @@ if div_yield is not None:
 else:
     div_str = "0.00%"
 
-# --- NEW: Debt-to-Equity Calculation ---
 debt_to_equity = info.get("debtToEquity")
 d_e_str = f"{debt_to_equity / 100:.2f}x" if debt_to_equity is not None else "N/A"
 
-# Create 5 columns now
+# Render Snapshot Row
 h1, h2, h3, h4, h5 = st.columns(5)
-
 with h1:
     st.markdown(f'<div class="metric-card"><div class="mc-label">P/E Ratio</div><div class="mc-value">{pe_str}</div></div>', unsafe_allow_html=True)
 with h2:
@@ -1565,7 +1606,8 @@ with h5:
       <div class="mc-sub">Safety check</div>
     </div>""", unsafe_allow_html=True)
 
-# ── Editable Data Fields ───────────────────────────────────────────────────────
+
+# ── 4. Editable Data Fields ───────────────────────────────────────────────────
 st.markdown('<div class="section-title">📥 Auto-Filled Data (editable)</div>', unsafe_allow_html=True)
 st.markdown(
     "<small style='color:#4a5570'>Fields are pre-filled from live market data. "
@@ -1613,7 +1655,6 @@ v = run_valuation(
     desired_return=desired_return,
     hold_years=hold_years,
 )
-
 st.markdown('<div class="gg-divider"></div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
