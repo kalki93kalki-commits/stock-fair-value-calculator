@@ -10,7 +10,8 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import requests
+from datetime import datetime, timedelta
 
 # ─────────────────────────────────────────────
 # PAGE CONFIG
@@ -972,11 +973,16 @@ def fetch_peer_data(tickers_str):
 # ─────────────────────────────────────────────
 # SESSION STATE INITIALISATION
 # ─────────────────────────────────────────────
-if "stock_data" not in st.session_state:
-    st.session_state.stock_data = None
-if "ticker_input" not in st.session_state:
-    st.session_state.ticker_input = ""
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "◬ Market Dashboard & Insights"
+if "selected_ticker" not in st.session_state:
+    st.session_state.selected_ticker = "RELIANCE.NS"
 
+# Quick-action callback to bridge pages seamlessly
+def navigate_to_analyzer(ticker_symbol):
+    st.session_state.selected_ticker = ticker_symbol
+    st.session_state.current_page = "📈 Stock Fundamental Analyzer"
+    st.rerun()
 
 # ─────────────────────────────────────────────
 # SIDEBAR — Settings & Controls
