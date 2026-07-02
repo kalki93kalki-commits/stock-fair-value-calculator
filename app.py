@@ -1263,10 +1263,16 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
                 else:
                     badge = "<span style='background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.2); padding:2px 6px; border-radius:4px; font-size:0.6rem; font-weight:600; text-transform:uppercase;'>Neutral</span>"
                 
-                title_safe = title.replace('"', '&quot;').replace("'", "&#39;")
+               title_safe = title.replace('"', '&quot;').replace("'", "&#39;")
                 
-                # Render beautifully styled premium terminal boxes
-                news_html += f"""
+                # FIX: Pack everything tightly into a single continuous line to kill the markdown indentation bug
+                card_html = f'<a href="{link}" target="_blank" style="text-decoration:none; color:inherit;"><div style="background:#11141d; padding:1.2rem; border-radius:6px; border:1px solid #232d3f; height:100%; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"><div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.8rem;"><span style="font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">{publisher}</span>{badge}</div><div style="font-size:0.85rem; color:#cbd5e1; line-height:1.6; font-weight:600;">{title_safe}</div></div></a>'
+                
+                news_html += card_html
+                valid_count += 1
+                
+            news_html += '</div>'
+            st.markdown(news_html, unsafe_allow_html=True)
                 <a href="{link}" target="_blank" style="text-decoration:none; color:inherit;">
                     <div style="background: #11141d; padding: 1.2rem; border-radius: 6px; border: 1px solid #232d3f; height: 100%; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.8rem;">
