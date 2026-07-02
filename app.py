@@ -1291,91 +1291,77 @@ if st.session_state.current_page == "◬ Market Dashboard & Insights":
         else:
             st.info("ℹ️ No live macro headlines found at this hour. Displaying standard structural trends.")
     
-    # 4. FII / DII Flow Tracker
-    st.subheader("🐋 FII / DII Flow Tracker")
-    st.markdown("<small style='color:#7b8cad'>Tracks net institutional buying and selling across the last 5 active trading sessions.</small>", unsafe_allow_html=True)
-    
-    flow_data = build_fii_dii_table()
-    if not flow_data.empty:
-        styled_rows = ""
-        for idx, row in flow_data.iterrows():
-            fii_val = row["FII Net Inflow (₹ Cr)"]
-            dii_val = row["DII Net Inflow (₹ Cr)"]
-            total_val = row["Net Total Inflow (₹ Cr)"]
-            
-            fii_color = "#10b981" if fii_val > 0 else "#ef4444"
-            dii_color = "#10b981" if dii_val > 0 else "#ef4444"
-            total_color = "#10b981" if total_val > 0 else "#ef4444"
-            
-            fii_prefix = "+" if fii_val > 0 else ""
-            dii_prefix = "+" if dii_val > 0 else ""
-            total_prefix = "+" if total_val > 0 else ""
-            
-            styled_rows += f"""<tr>
-<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-weight:600; color:#cbd5e1;">{row['Trading Date']}</td>
-<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{fii_color}; font-weight:600;">{fii_prefix}{fii_val:,.0f} Cr</td>
-<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{dii_color}; font-weight:600;">{dii_prefix}{dii_val:,.0f} Cr</td>
-<td style="padding:0.75rem 1rem; border-bottom:1px solid #1e293b; font-family:'JetBrains Mono', monospace; color:{total_color}; font-weight:800;">{total_prefix}{total_val:,.0f} Cr</td>
-</tr>"""
-            
-        st.markdown(f"""
-        <div style="border: 1px solid #232d3f; border-radius: 8px; overflow: hidden; background: #11141d;">
-            <table class="custom-table" style="margin-top:0;">
-                <thead>
-                    <tr>
-                        <th style="background-color: #1a2035;">Trading Date</th>
-                        <th style="background-color: #1a2035;">FII Net Purchases (₹ Cr)</th>
-                        <th style="background-color: #1a2035;">DII Net Purchases (₹ Cr)</th>
-                        <th style="background-color: #1a2035;">Combined Inflow (₹ Cr)</th>
-                    </tr>
-                </thead>
-                <tbody>{styled_rows}</tbody>
-            </table>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    st.markdown("<hr style='border-color: #1e293b; margin: 2rem 0;' />", unsafe_allow_html=True)
+
 
     # 5. Hidden Gems (1-Week Momentum Scanner)
-    st.markdown("""
-    <div style="margin-top: 2rem; margin-bottom: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="color: #10b981; font-size: 1.2rem;">◬</span>
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: #f8fafc;">
-                Hidden Gems
-            </h3>
-        </div>
-        <p style="color: #64748b; font-size: 0.82rem; margin-top: 0.4rem; letter-spacing: 0.02em;">
-            Fundamentally supercharged companies compounding quietly before the broader market identifies them.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    @st.cache_data(ttl=900, show_spinner=False)
+def build_hidden_gems_table():
+    """
+    Scans 5,000+ Indian stocks instantly using TradingView's free backend scanner API.
+    Filters out penny stocks and returns the top 10 highest 1-week momentum leaders.
+    """
+    url = "https://scanner.tradingview.com/india/scan"
     
-    with st.spinner("Compiling live 1-week momentum data..."):
-        gems = build_hidden_gems_table()
-        if gems:
-            for g in gems:
-                col_g_details, col_g_action = st.columns([5, 1])
-                with col_g_details:
-                    st.markdown(f"""
-                    <div style="background: #161b27; border: 1px solid #232d3f; border-radius: 6px; padding: 0.8rem 1.2rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <div>
-                            <span style="font-weight: 700; font-size: 1rem; color: #f8fafc;">{g['Company']}</span> 
-                            <code style="color: #4a9eff; margin-left: 0.5rem; background: #0f1117; padding: 2px 6px; border-radius: 4px; border: 1px solid #2a3550;">{g['Ticker']}</code>
-                            <span style="color: #64748b; margin-left: 1rem; font-size: 0.8rem; font-weight: 500;">{g['Sector']}</span>
-                        </div>
-                        <div><span class="{g['BadgeType']}">{g['Catalyst']}</span></div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with col_g_action:
-                    if st.button(f"Analyze", key=f"btn_{g['Ticker']}", use_container_width=True):
-                        navigate_to_analyzer(g['Ticker'])
-        else:
-            st.info("Gathering live momentum data... Market API may be resting.")
-            
-    # MAGIC FIX: Stop rendering the rest of the page so we don't have to indent your original code!
-    st.stop()
+    # We ask TradingView to do the heavy math on their servers
+    payload = {
+        "filter": [
+            {"left": "exchange", "operation": "equal", "right": "NSE"},
+            {"left": "type", "operation": "equal", "right": "stock"},
+            {"left": "close", "operation": "greater", "right": 50},      # Price > ₹50 (No penny stocks)
+            {"left": "volume", "operation": "greater", "right": 500000}  # Volume > 500k (High liquidity)
+        ],
+        "options": {"lang": "en"},
+        "markets": ["india"],
+        "symbols": {"query": {"types": ["stock"]}, "tickers": []},
+        # We request Name, Company Description, Sector, and 1-Week Performance
+        "columns": ["name", "description", "sector", "Perf.W"],
+        # Sort by highest 1-week performance
+        "sort": {"sortBy": "Perf.W", "sortOrder": "desc"},
+        "range": [0, 10] # Bring back exactly the Top 10
+    }
     
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=5)
+        data = response.json()
+        
+        live_list = []
+        for item in data.get("data", []):
+            d = item.get("d", [])
+            if len(d) >= 4:
+                ticker = f"{d[0]}.NS"  # Append .NS for Yahoo Finance compatibility later
+                company_name = d[1][:25] + "..." if len(d[1]) > 25 else d[1]
+                sector = d[2] if d[2] else "Equities"
+                perf_w = d[3]
+                
+                # Dynamic Badging based on real performance
+                if perf_w > 15:
+                    cat = f"🔥 +{perf_w:.1f}% (Massive Breakout)"
+                    badge = "badge-breakout"
+                elif perf_w > 5:
+                    cat = f"📈 +{perf_w:.1f}% (Momentum)"
+                    badge = "badge-growth"
+                else:
+                    cat = f"⚖️ +{perf_w:.1f}% (Consolidating)"
+                    badge = "badge-deleveraging"
+
+                live_list.append({
+                    "Ticker": ticker,
+                    "Company": company_name.title(),
+                    "Sector": sector,
+                    "Piotroski F-Score": "Live Scan",
+                    "Catalyst": cat,
+                    "BadgeType": badge
+                })
+                
+        return live_list
+    except Exception as e:
+        # Failsafe fallback just in case the network drops
+        return []
     
 # ─────────────────────────────────────────────
 # MAIN CONTENT
